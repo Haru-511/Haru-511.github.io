@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UNAL Horario a Google Calendar</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; max-width: 1050px; margin: 2rem auto; padding: 0 1rem; color: #222; line-height: 1.4; }
+    .card { border: 1px solid #d0d7de; border-radius: 8px; padding: 1.5rem; background: #ffffff; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .grid-dates { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1rem 0; }
+    label { font-weight: 600; font-size: 0.9rem; display: block; margin-bottom: 0.25rem; }
+    input[type="date"], input[type="file"] { width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    button { background: #0056b3; color: white; border: none; padding: 0.75rem 1.25rem; border-radius: 4px; cursor: pointer; font-size: 1rem; font-weight: 600; }
+    button:disabled { background: #94a3b8; cursor: not-allowed; }
+    textarea { width: 100%; height: 160px; font-family: monospace; font-size: 0.8rem; border: 1px solid #ccc; border-radius: 4px; padding: 0.5rem; box-sizing: border-box; }
+    .status { font-weight: 600; margin-bottom: 0.5rem; color: #0056b3; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    th, td { border: 1px solid #e1e4e8; padding: 8px 10px; text-align: left; font-size: 0.85rem; }
+    th { background: #f6f8fa; }
+    .badge-edificio { background: #e1f5fe; color: #0277bd; font-weight: bold; padding: 2px 6px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h2>Convertidor de Horario UNAL (.pdf a .ics)</h2>
+    <p>Sube tu PDF del SIA para generar los eventos recurrentes de tus clases en Google Calendar.</p>
+    
+    <div class="grid-dates">
+      <div>
+        <label for="fechaInicio">Fecha de inicio de clases:</label>
+        <input type="date" id="fechaInicio" value="2026-08-27">
+      </div>
+      <div>
+        <label for="fechaFin">Fecha de fin de clases:</label>
+        <input type="date" id="fechaFin" value="2026-12-12">
+      </div>
+    </div>
+
+    <br>
+    <label for="pdfInput">Archivo PDF del SIA:</label>
+    <input type="file" id="pdfInput" accept="application/pdf"><br><br>
+    <button id="btnGenerar" disabled>Descargar archivo .ics</button>
+  </div>
+
+  <div class="card">
+    <div class="status" id="statusText">Estado: Esperando archivo PDF...</div>
+    <h3>Clases detectadas (<span id="countEvents">0</span>):</h3>
+    <table id="tableEvents">
+      <thead>
+        <tr>
+          <th>Día</th>
+          <th>Materia</th>
+          <th>Hora</th>
+          <th>Edificio</th>
+          <th>Aula / Salón</th>
+          <th>Profesor</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td colspan="6">No hay datos procesados aún.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>Texto Reconstruido del PDF:</h3>
+    <textarea id="rawText" readonly placeholder="Aquí se visualizará el texto procesado por el lector..."></textarea>
+  </div>
+
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    const input = document.getElementById('pdfInput');
+    const btnGenerar = document.getElementById('btnGenerar');
+    const statusText = document.getElementById('statusText');
+    const rawTextArea = document.getElementById('rawText');
+    const countEvents = document.getElementById('countEvents');
+    const tableBody = document.querySelector('#tableEvents tbody');
+
+    let eventosExtraidos = [];
+
+    const DIAS_MAP = {
+      'LUNES': 'MO',
+      'MARTES': 'TU',
+      'MIÉRCOLES': 'WE',
+      'MIERCOLES': 'WE',
+      'JUEVES': 'TH',
+      'VIERNES': 'FR',
+      'SÁBADO': 'SA',
+      'SABADO': 'SA'
+    };
+
+    input.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      statusText.innerText = "Estado: Leyendo PDF y estructurando campos...";
+      const buffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+
+      let todasLasLineas = [];
+
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        const page = await pdf.getPage(pageNum);
+        const lineasPagina = await extraerLineasOrdenadas(page);
+        todasLasLineas.push(`--- PÁGINA ${pageNum} ---`, ...lineasPagina);
+      }
+
+      rawTextArea.value = todasLasLineas.join("\n");
+      eventosExtraidos = parsearLineasUNAL(todasLasLineas);
+      actualizarInterfaz();
+    });
+
+    async function extraerLineasOrdenadas(page) {
+      const textContent = await page.getTextContent();
+      if (!textContent.items || textContent.items.length === 0) return [];
+
+      const items = textContent.items
+        .map(item => ({
+          str: item.str.trim(),
+          x: item.transform[4],
+          y: item.transform[5]
+        }))
+        .filter(item => item.str.length > 0);
+
+      items.sort((a, b) => {
+        if (Math.abs(a.y - b.y) > 4) {
+          return b.y - a.y;
+        }
+        return a.x - b.x;
+      });
+
+      let lineas = [];
+      let filaActual = [];
+      let yActual = null;
+
+      for (let item of items) {
+        if (yActual === null || Math.abs(item.y - yActual) > 4) {
+          if (filaActual.length > 0) {
+            lineas.push(filaActual.map(i => i.str).join(" "));
+          }
+          filaActual = [item];
+          yActual = item.y;
+        } else {
+          filaActual.push(item);
+        }
+      }
+      if (filaActual.length > 0) {
+        lineas.push(filaActual.map(i => i.str).join(" "));
+      }
+
+      return lineas;
+    }
+
+    function parsearLineasUNAL(lineas) {
+      let eventosRaw = [];
+      let diaActual = "MO";
+
+      let i = 0;
+      while (i < lineas.length) {
+        let linea = lineas[i];
+
+        // Coincidir con el inicio de una asignatura [Código 7 dígitos]
+        let matchInicio = linea.match(/(\b(LUNES|MARTES|MIÉRCOLES|MIERCOLES|JUEVES|VIERNES|SÁBADO|SABADO)\b)?\s*\[?(\d{7})\]?\s*(.+)$/i);
+
+        if (matchInicio) {
+          if (matchInicio[2]) {
+            const dStr = matchInicio[2].toUpperCase();
+            if (DIAS_MAP[dStr]) diaActual = DIAS_MAP[dStr];
+          }
+
+          let codigo = matchInicio[3];
+          let restoLinea = matchInicio[4];
+
+          // Concatenar líneas secundarias pertenecientes al mismo registro
+          let bloqueTexto = restoLinea;
+          let j = i + 1;
+          while (j < lineas.length) {
+            let sigLinea = lineas[j];
+            if (
+              sigLinea.match(/\[?\d{7}\]?/) ||
+              sigLinea.match(/^\b(LUNES|MARTES|MIÉRCOLES|MIERCOLES|JUEVES|VIERNES|SÁBADO|SABADO)\b$/i) ||
+              sigLinea.match(/\d{2}\/\d{2}\/\d{4}/) ||
+              sigLinea.includes("UNIVERSIDAD NACIONAL") ||
+              sigLinea.includes("Pag.") ||
+              sigLinea.includes("Leyenda de abreviaturas")
+            ) {
+              break;
+            }
+            bloqueTexto += " " + sigLinea;
+            j++;
+          }
+          i = j - 1;
+
+          // Extraer la franja horaria HH:MM - HH:MM
+          let matchHora = bloqueTexto.match(/(\d{2}):(\d{2})\s*[\-]?\s*(\d{2}):(\d{2})/);
+          if (matchHora) {
+            let hIniStr = `${matchHora[1]}:${matchHora[2]}`;
+            let hFinStr = `${matchHora[3]}:${matchHora[4]}`;
+            let hInicioISO = `${matchHora[1]}${matchHora[2]}00`;
+            let hFinISO = `${matchHora[3]}${matchHora[4]}00`;
+
+            let textoSinHora = bloqueTexto.replace(matchHora[0], "").trim();
+
+            // Extraer Asignatura y Grupo
+            let nombreMateria = "Clase UNAL";
+            let grupo = "";
+            let textoProfesorAula = textoSinHora;
+
+            let matchGrupo = textoSinHora.match(/^(.*?)\s+(\d+\s*\([^)]+\))\s*(.*)$/);
+            if (matchGrupo) {
+              nombreMateria = matchGrupo[1].trim();
+              grupo = matchGrupo[2].trim();
+              textoProfesorAula = matchGrupo[3].trim();
+            }
+
+            // Separar Profesor de Ubicación
+            let regexAulaKey = /(SAL[OÓ]N|AUDITORIO|SALA|LABORATORIO|Aula Virtual)/i;
+            let matchAula = textoProfesorAula.match(regexAulaKey);
+
+            let profesor = "";
+            let textoAulaRaw = "Universidad Nacional de Colombia";
+
+            if (matchAula) {
+              let idxAula = matchAula.index;
+              profesor = limpiarProfesor(textoProfesorAula.substring(0, idxAula));
+              textoAulaRaw = textoProfesorAula.substring(idxAula).trim();
+            } else {
+              profesor = limpiarProfesor(textoProfesorAula);
+            }
+
+            // Aplicar la regla exacta de 3 dígitos
+            const ubicacion = procesarEdificioYAula(textoAulaRaw, profesor);
+
+            eventosRaw.push({
+              codigo: codigo,
+              materia: nombreMateria,
+              grupo: grupo,
+              profesor: profesor,
+              edificio: ubicacion.edificio,
+              aula: ubicacion.salon,
+              ubicacionCompleta: ubicacion.ubicacionCompleta,
+              dia: diaActual,
+              horaInicio: hInicioISO,
+              horaFin: hFinISO,
+              horaTexto: `${hIniStr} - ${hFinStr}`
+            });
+          }
+        } else {
+          let matchDiaSolo = linea.match(/^\b(LUNES|MARTES|MIÉRCOLES|MIERCOLES|JUEVES|VIERNES|SÁBADO|SABADO)\b/i);
+          if (matchDiaSolo) {
+            let dStr = matchDiaSolo[1].toUpperCase();
+            if (DIAS_MAP[dStr]) diaActual = DIAS_MAP[dStr];
+          }
+        }
+        i++;
+      }
+
+      // Deduplicar eventos repetidos por bloques de semanas
+      let eventosUnicos = [];
+      let mapaClaves = {};
+
+      for (let ev of eventosRaw) {
+        let clave = `${ev.dia}_${ev.horaInicio}_${ev.materia}`;
+        if (!mapaClaves[clave]) {
+          mapaClaves[clave] = true;
+          eventosUnicos.push(ev);
+        } else {
+          let existente = eventosUnicos.find(e => `${e.dia}_${e.horaInicio}_${e.materia}` === clave);
+          if (existente && ev.ubicacionCompleta.length > existente.ubicacionCompleta.length) {
+            existente.edificio = ev.edificio;
+            existente.aula = ev.aula;
+            existente.ubicacionCompleta = ev.ubicacionCompleta;
+          }
+        }
+      }
+
+      return eventosUnicos;
+    }
+
+    function limpiarProfesor(profStr) {
+      if (!profStr) return "";
+      let p = profStr.trim();
+      let partes = p.split(/\s+/);
+      let mitad = Math.floor(partes.length / 2);
+      if (partes.length >= 4 && partes.length % 2 === 0) {
+        let primeraMitad = partes.slice(0, mitad).join(" ");
+        let segundaMitad = partes.slice(mitad).join(" ");
+        if (primeraMitad.toLowerCase() === segundaMitad.toLowerCase()) {
+          return primeraMitad;
+        }
+      }
+      return p;
+    }
+
+  function procesarEdificioYAula(textoAula, profesor) {
+  // 1. Limpiar el nombre del profesor si quedó cruzado
+  if (profesor && profesor.length > 3) {
+    let profClean = profesor.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    textoAula = textoAula.replace(new RegExp(profClean, 'gi'), '');
+  }
+
+  textoAula = textoAula.replace(/^[\s\-]+|[\s\-]+$/g, '').trim();
+
+  // Extraer todas las cadenas de exactamente 3 caracteres numéricos
+  const matches3 = textoAula.match(/\b\d{3}\b/g) || [];
+
+  let edificio = "UNAL";
+  let salon = textoAula; // Por defecto consigna todo el texto del aula
+
+  if (matches3.length > 0) {
+    // Siempre es la primera cadena que hay en el campo
+    edificio = matches3[0];
+
+    // Identificar si existe otra cadena distinta (ignora las que son iguales al edificio)
+    let numeroDistinto = matches3.find(num => num !== edificio);
+
+    if (numeroDistinto) {
+      salon = `Salón ${numeroDistinto}`;
+    }
+    // Si no encuentra otra distinta, 'salon' conserva todo el texto para corregir
+    
+  } else if (textoAula.toLowerCase().includes("virtual")) {
+    edificio = "Virtual";
+    salon = "Aula Virtual";
+  }
+
+  return {
+    edificio: edificio,
+    salon: salon,
+    ubicacionCompleta: edificio === "Virtual" ? salon : `Edificio ${edificio} - ${salon}`
+  };
+}
+   function actualizarInterfaz() {
+  countEvents.innerText = eventosExtraidos.length;
+  tableBody.innerHTML = "";
+
+  if (eventosExtraidos.length === 0) {
+    tableBody.innerHTML = '<tr><td colspan="6">No se detectaron clases. Revisa el texto en el visor inferior.</td></tr>';
+    btnGenerar.disabled = true;
+    statusText.innerText = "Estado: 0 clases encontradas.";
+    return;
+  }
+
+  // Se añade 'index' para identificar qué evento se está editando
+  eventosExtraidos.forEach((ev, index) => {
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td><b>${ev.dia}</b></td>
+      <td>${ev.materia}</td>
+      <td>${ev.horaTexto}</td>
+      <td><span class="badge-edificio">${ev.edificio}</span></td>
+      <td>
+        <input type="text" class="input-aula" data-index="${index}" value="${ev.aula}" 
+               style="width: 100%; padding: 0.3rem; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-family: inherit;">
+      </td>
+      <td>${ev.profesor}</td>
+    `;
+    tableBody.appendChild(row);
+  });
+
+  // Detectar cambios en los inputs y actualizar el arreglo 'eventosExtraidos'
+  document.querySelectorAll('.input-aula').forEach(input => {
+    input.addEventListener('input', (e) => {
+      const idx = e.target.getAttribute('data-index');
+      const nuevoSalon = e.target.value;
+      
+      eventosExtraidos[idx].aula = nuevoSalon;
+      eventosExtraidos[idx].ubicacionCompleta = eventosExtraidos[idx].edificio === "Virtual" 
+        ? nuevoSalon 
+        : `Edificio ${eventosExtraidos[idx].edificio} - ${nuevoSalon}`;
+    });
+  });
+
+  btnGenerar.disabled = false;
+  statusText.innerText = `Estado: ¡Procesamiento exitoso! Se detectaron ${eventosExtraidos.length} asignaturas.`;
+}
+    function obtenerFechaInicioParaDia(fechaInicioStr, diaCodigo) {
+      const mapDays = { 'MO': 1, 'TU': 2, 'WE': 3, 'TH': 4, 'FR': 5, 'SA': 6 };
+      const targetDay = mapDays[diaCodigo];
+
+      const parts = fechaInicioStr.split('-');
+      let cur = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+
+      while (cur.getDay() !== targetDay) {
+        cur.setDate(cur.getDate() + 1);
+      }
+
+      const yyyy = cur.getFullYear();
+      const mm = String(cur.getMonth() + 1).padStart(2, '0');
+      const dd = String(cur.getDate()).padStart(2, '0');
+      return `${yyyy}${mm}${dd}`;
+    }
+
+    btnGenerar.addEventListener('click', () => {
+      const fechaInicioInput = document.getElementById('fechaInicio').value;
+      const fechaFinInput = document.getElementById('fechaFin').value;
+
+      if (!fechaInicioInput || !fechaFinInput) {
+        alert("Por favor selecciona las fechas de inicio y fin del semestre.");
+        return;
+      }
+
+      const fechaUntilISO = `${fechaFinInput.replace(/-/g, '')}T235959Z`;
+
+      let icsContent = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//UNAL//Horario SIA Calendar//ES',
+        'CALSCALE:GREGORIAN'
+      ];
+
+      eventosExtraidos.forEach(ev => {
+        const fechaPrimeraClase = obtenerFechaInicioParaDia(fechaInicioInput, ev.dia);
+
+        icsContent.push(
+          'BEGIN:VEVENT',
+          `SUMMARY:${ev.materia}`,
+          `LOCATION:${ev.ubicacionCompleta}`,
+          `DESCRIPTION:Grupo: ${ev.grupo} - Profesor: ${ev.profesor}`,
+          `DTSTART;TZID=America/Bogota:${fechaPrimeraClase}T${ev.horaInicio}`,
+          `DTEND;TZID=America/Bogota:${fechaPrimeraClase}T${ev.horaFin}`,
+          `RRULE:FREQ=WEEKLY;UNTIL=${fechaUntilISO};BYDAY=${ev.dia}`,
+          'END:VEVENT'
+        );
+      });
+
+      icsContent.push('END:VCALENDAR');
+
+      const blob = new Blob([icsContent.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'horario_unal.ics';
+      a.click();
+    });
+  </script>
+</body>
+</html>
