@@ -6,67 +6,101 @@
   <title>UNAL Horario a Google Calendar</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <style>
-    body { font-family: system-ui, -apple-system, sans-serif; max-width: 1050px; margin: 2rem auto; padding: 0 1rem; color: #222; line-height: 1.4; }
-    .card { border: 1px solid #d0d7de; border-radius: 8px; padding: 1.5rem; background: #ffffff; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-    .grid-dates { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1rem 0; }
-    label { font-weight: 600; font-size: 0.9rem; display: block; margin-bottom: 0.25rem; }
-    input[type="date"], input[type="file"] { width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-    button { background: #0056b3; color: white; border: none; padding: 0.75rem 1.25rem; border-radius: 4px; cursor: pointer; font-size: 1rem; font-weight: 600; }
+    body { font-family: system-ui, -apple-system, sans-serif; max-width: 1200px; margin: 2rem auto; padding: 0 1rem; color: #222; line-height: 1.4; background-color: #f4f6f8; }
+    .card { border: 1px solid #d0d7de; border-radius: 8px; padding: 1.5rem; background: #ffffff; margin-bottom: 1.5rem; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+    .grid-dates { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin: 1rem 0; }
+    label { font-weight: 600; font-size: 0.9rem; display: block; margin-bottom: 0.25rem; color: #444; }
+    input[type="date"], input[type="file"], input[type="text"], select { width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-family: inherit; font-size: 0.95rem; }
+    button { background: #0056b3; color: white; border: none; padding: 0.75rem 1.25rem; border-radius: 4px; cursor: pointer; font-size: 1rem; font-weight: 600; transition: background 0.2s; }
+    button:hover:not(:disabled) { background: #004494; }
     button:disabled { background: #94a3b8; cursor: not-allowed; }
-    textarea { width: 100%; height: 160px; font-family: monospace; font-size: 0.8rem; border: 1px solid #ccc; border-radius: 4px; padding: 0.5rem; box-sizing: border-box; }
-    .status { font-weight: 600; margin-bottom: 0.5rem; color: #0056b3; }
-    table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
-    th, td { border: 1px solid #e1e4e8; padding: 8px 10px; text-align: left; font-size: 0.85rem; }
-    th { background: #f6f8fa; }
-    .badge-edificio { background: #e1f5fe; color: #0277bd; font-weight: bold; padding: 2px 6px; border-radius: 4px; }
+    .status { font-weight: 600; margin-bottom: 1rem; color: #0056b3; background: #e1f5fe; padding: 0.5rem 1rem; border-radius: 4px; display: inline-block; }
+    
+    .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; align-items: start; }
+    @media (max-width: 900px) { .dashboard { grid-template-columns: 1fr; } }
+    
+    .materia-card { border: 1px solid #e1e4e8; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; background: #fafbfc; }
+    .materia-header { display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; }
+    .color-picker { width: 40px; height: 40px; border: none; border-radius: 4px; cursor: pointer; padding: 0; outline: none; }
+    .materia-name-input { font-size: 1.05rem; font-weight: bold; flex: 1; border: 1px solid #b7c1cb; }
+    .codigo-badge { font-family: monospace; background: #eaecf0; padding: 6px 10px; border-radius: 4px; color: #555; font-size: 0.85rem; font-weight: bold; }
+    .sesiones-table { width: 100%; border-collapse: collapse; background: #fff; margin-bottom: 0.5rem; }
+    .sesiones-table th, .sesiones-table td { border: 1px solid #e1e4e8; padding: 6px; text-align: left; font-size: 0.85rem; }
+    .sesiones-table th { background: #f6f8fa; }
+    
+    .cal-container { background: #fff; border: 1px solid #d0d7de; border-radius: 8px; overflow: hidden; }
+    .cal-wrapper { display: flex; min-width: 500px; }
+    .cal-times { width: 50px; background: #f6f8fa; border-right: 1px solid #d0d7de; }
+    .cal-time-cell { height: 40px; position: relative; font-size: 11px; color: #666; }
+    .cal-time-cell span { position: absolute; top: -7px; right: 6px; font-weight: 500; }
+    .cal-grid { flex: 1; display: flex; }
+    .cal-day-col { flex: 1; border-right: 1px solid #e1e4e8; display: flex; flex-direction: column; }
+    .cal-day-col:last-child { border-right: none; }
+    .cal-day-header { text-align: center; font-weight: 600; font-size: 0.85rem; background: #f6f8fa; padding: 8px 0; border-bottom: 1px solid #d0d7de; }
+    .cal-day-body { position: relative; flex: 1; background: #fff; height: 640px; }
+    .cal-grid-line { position: absolute; width: 100%; height: 1px; background: #f0f0f0; }
+    .cal-event { position: absolute; width: 92%; left: 4%; color: #fff; font-size: 0.7rem; padding: 4px; border-radius: 4px; box-sizing: border-box; overflow: hidden; line-height: 1.2; z-index: 10; box-shadow: 0 1px 3px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); }
+    .cal-event strong { display: block; margin-bottom: 2px; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
+    
+    .hidden { display: none !important; }
   </style>
 </head>
 <body>
 
   <div class="card">
     <h2>Convertidor de Horario UNAL (.pdf a .ics)</h2>
-    <p>Sube tu PDF del SIA para generar los eventos recurrentes de tus clases en Google Calendar.</p>
+    <p>Sube tu PDF del SIA para generar tu horario. Ajusta los nombres, salones y colores a tu gusto visualizando cómo quedará tu semana.</p>
     
     <div class="grid-dates">
       <div>
-        <label for="fechaInicio">Fecha de inicio de clases:</label>
+        <label for="fechaInicio">Inicio de clases (DD/MM/AAAA):</label>
         <input type="date" id="fechaInicio" value="2026-08-27">
       </div>
       <div>
-        <label for="fechaFin">Fecha de fin de clases:</label>
-        <input type="date" id="fechaFin" value="2026-12-12">
+        <label for="fechaFin">Fin de semestre (DD/MM/AAAA):</label>
+        <input type="date" id="fechaFin" value="2026-12-16">
+      </div>
+      <div>
+        <label for="notificacion">Recordatorio (Alarma):</label>
+        <select id="notificacion">
+          <option value="0">Sin recordatorio</option>
+          <option value="5">5 minutos antes</option>
+          <option value="10" selected>10 minutos antes</option>
+          <option value="15">15 minutos antes</option>
+          <option value="30">30 minutos antes</option>
+          <option value="60">1 hora antes</option>
+        </select>
+      </div>
+      <div>
+        <label>Color de las materias:</label>
+        <div style="display: flex; gap: 8px; align-items: center; margin-top: 0.3rem;">
+          <input type="checkbox" id="checkColorUnico" style="width: auto; transform: scale(1.2); margin: 0; cursor: pointer;">
+          <label for="checkColorUnico" style="margin: 0; font-weight: normal; cursor: pointer;">Unificar color</label>
+          <input type="color" id="colorUnicoPicker" value="#0056b3" style="width: 35px; height: 30px; padding: 0; border: 1px solid #ccc; border-radius: 4px; cursor: pointer;" disabled>
+        </div>
       </div>
     </div>
 
     <br>
-    <label for="pdfInput">Archivo PDF del SIA:</label>
-    <input type="file" id="pdfInput" accept="application/pdf"><br><br>
-    <button id="btnGenerar" disabled>Descargar archivo .ics</button>
+    <label for="pdfInput">Archivo PDF del Horario SIA:</label>
+    <input type="file" id="pdfInput" accept="application/pdf">
   </div>
 
-  <div class="card">
-    <div class="status" id="statusText">Estado: Esperando archivo PDF...</div>
-    <h3>Clases detectadas (<span id="countEvents">0</span>):</h3>
-    <table id="tableEvents">
-      <thead>
-        <tr>
-          <th>Día</th>
-          <th>Materia</th>
-          <th>Hora</th>
-          <th>Edificio</th>
-          <th>Aula / Salón</th>
-          <th>Profesor</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr><td colspan="6">No hay datos procesados aún.</td></tr>
-      </tbody>
-    </table>
-  </div>
+  <div id="statusText" class="status hidden">Esperando archivo PDF...</div>
 
-  <div class="card">
-    <h3>Texto Reconstruido del PDF:</h3>
-    <textarea id="rawText" readonly placeholder="Aquí se visualizará el texto procesado por el lector..."></textarea>
+  <div class="dashboard hidden" id="dashboard">
+    <div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 style="margin: 0;">Materias Identificadas</h3>
+        <button id="btnGenerar">Descargar archivo .ics</button>
+      </div>
+      <div id="materiasList"></div>
+    </div>
+
+    <div>
+      <h3 style="margin-top: 0;">Previsualización de la Semana</h3>
+      <div class="cal-container" id="calendarView"></div>
+    </div>
   </div>
 
   <script>
@@ -75,41 +109,62 @@
     const input = document.getElementById('pdfInput');
     const btnGenerar = document.getElementById('btnGenerar');
     const statusText = document.getElementById('statusText');
-    const rawTextArea = document.getElementById('rawText');
-    const countEvents = document.getElementById('countEvents');
-    const tableBody = document.querySelector('#tableEvents tbody');
+    const dashboard = document.getElementById('dashboard');
+    
+    const checkColorUnico = document.getElementById('checkColorUnico');
+    const colorUnicoPicker = document.getElementById('colorUnicoPicker');
 
-    let eventosExtraidos = [];
+    let materiasExtraidas = [];
+    
+    const PALETA_COLORES = ['#4285F4', '#0F9D58', '#F4B400', '#DB4437', '#673AB7', '#00ACC1', '#FF7043', '#827717', '#795548', '#E91E63'];
 
     const DIAS_MAP = {
-      'LUNES': 'MO',
-      'MARTES': 'TU',
-      'MIÉRCOLES': 'WE',
-      'MIERCOLES': 'WE',
-      'JUEVES': 'TH',
-      'VIERNES': 'FR',
-      'SÁBADO': 'SA',
-      'SABADO': 'SA'
+      'LUNES': 'LU', 'MARTES': 'MA', 'MIÉRCOLES': 'MI', 'MIERCOLES': 'MI',
+      'JUEVES': 'JU', 'VIERNES': 'VI', 'SÁBADO': 'SA', 'SABADO': 'SA'
     };
+
+    checkColorUnico.addEventListener('change', (e) => {
+      colorUnicoPicker.disabled = !e.target.checked;
+      if (materiasExtraidas.length > 0) {
+        if (e.target.checked) {
+          let color = colorUnicoPicker.value;
+          materiasExtraidas.forEach(m => m.color = color);
+        } else {
+          materiasExtraidas.forEach((m, i) => m.color = PALETA_COLORES[i % PALETA_COLORES.length]);
+        }
+        renderMateriasList();
+        renderCalendar();
+      }
+    });
+
+    colorUnicoPicker.addEventListener('input', (e) => {
+      if (checkColorUnico.checked && materiasExtraidas.length > 0) {
+        materiasExtraidas.forEach(m => m.color = e.target.value);
+        renderMateriasList();
+        renderCalendar();
+      }
+    });
 
     input.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
 
-      statusText.innerText = "Estado: Leyendo PDF y estructurando campos...";
+      statusText.classList.remove('hidden');
+      statusText.innerText = "Leyendo PDF e identificando asignaturas...";
+      dashboard.classList.add('hidden');
+
       const buffer = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
 
       let todasLasLineas = [];
-
       for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
         const page = await pdf.getPage(pageNum);
         const lineasPagina = await extraerLineasOrdenadas(page);
-        todasLasLineas.push(`--- PÁGINA ${pageNum} ---`, ...lineasPagina);
+        todasLasLineas.push(...lineasPagina);
       }
 
-      rawTextArea.value = todasLasLineas.join("\n");
-      eventosExtraidos = parsearLineasUNAL(todasLasLineas);
+      const eventosRaw = parsearLineasUNAL(todasLasLineas);
+      agruparMaterias(eventosRaw);
       actualizarInterfaz();
     });
 
@@ -118,38 +173,22 @@
       if (!textContent.items || textContent.items.length === 0) return [];
 
       const items = textContent.items
-        .map(item => ({
-          str: item.str.trim(),
-          x: item.transform[4],
-          y: item.transform[5]
-        }))
+        .map(item => ({ str: item.str.trim(), x: item.transform[4], y: item.transform[5] }))
         .filter(item => item.str.length > 0);
 
-      items.sort((a, b) => {
-        if (Math.abs(a.y - b.y) > 4) {
-          return b.y - a.y;
-        }
-        return a.x - b.x;
-      });
+      items.sort((a, b) => Math.abs(a.y - b.y) > 4 ? b.y - a.y : a.x - b.x);
 
-      let lineas = [];
-      let filaActual = [];
-      let yActual = null;
-
+      let lineas = [], filaActual = [], yActual = null;
       for (let item of items) {
         if (yActual === null || Math.abs(item.y - yActual) > 4) {
-          if (filaActual.length > 0) {
-            lineas.push(filaActual.map(i => i.str).join(" "));
-          }
+          if (filaActual.length > 0) lineas.push(filaActual.map(i => i.str).join(" "));
           filaActual = [item];
           yActual = item.y;
         } else {
           filaActual.push(item);
         }
       }
-      if (filaActual.length > 0) {
-        lineas.push(filaActual.map(i => i.str).join(" "));
-      }
+      if (filaActual.length > 0) lineas.push(filaActual.map(i => i.str).join(" "));
 
       return lineas;
     }
@@ -161,9 +200,7 @@
       let i = 0;
       while (i < lineas.length) {
         let linea = lineas[i];
-
-        // Coincidir con el inicio de una asignatura [Código 7 dígitos]
-        let matchInicio = linea.match(/(\b(LUNES|MARTES|MIÉRCOLES|MIERCOLES|JUEVES|VIERNES|SÁBADO|SABADO)\b)?\s*\[?(\d{7})\]?\s*(.+)$/i);
+        let matchInicio = linea.match(/(\b(LUNES|MARTES|MIÉRCOLES|MIERCOLES|JUEVES|VIERNES|SÁBADO|SABADO)\b)?\s*\[?(\d{7}[-A-Z]*?)\]?\s*(.+)$/i);
 
         if (matchInicio) {
           if (matchInicio[2]) {
@@ -174,19 +211,11 @@
           let codigo = matchInicio[3];
           let restoLinea = matchInicio[4];
 
-          // Concatenar líneas secundarias pertenecientes al mismo registro
           let bloqueTexto = restoLinea;
           let j = i + 1;
           while (j < lineas.length) {
             let sigLinea = lineas[j];
-            if (
-              sigLinea.match(/\[?\d{7}\]?/) ||
-              sigLinea.match(/^\b(LUNES|MARTES|MIÉRCOLES|MIERCOLES|JUEVES|VIERNES|SÁBADO|SABADO)\b$/i) ||
-              sigLinea.match(/\d{2}\/\d{2}\/\d{4}/) ||
-              sigLinea.includes("UNIVERSIDAD NACIONAL") ||
-              sigLinea.includes("Pag.") ||
-              sigLinea.includes("Leyenda de abreviaturas")
-            ) {
+            if (sigLinea.match(/\[?\d{7}[-A-Z]*?\]?/) || sigLinea.match(/^\b(LUNES|MARTES|MIÉRCOLES|MIERCOLES|JUEVES|VIERNES|SÁBADO|SABADO)\b$/i) || sigLinea.match(/\d{2}\/\d{2}\/\d{4}/) || sigLinea.includes("UNIVERSIDAD NACIONAL") || sigLinea.includes("Pag.") || sigLinea.includes("Leyenda de abreviaturas")) {
               break;
             }
             bloqueTexto += " " + sigLinea;
@@ -194,20 +223,13 @@
           }
           i = j - 1;
 
-          // Extraer la franja horaria HH:MM - HH:MM
           let matchHora = bloqueTexto.match(/(\d{2}):(\d{2})\s*[\-]?\s*(\d{2}):(\d{2})/);
           if (matchHora) {
             let hIniStr = `${matchHora[1]}:${matchHora[2]}`;
             let hFinStr = `${matchHora[3]}:${matchHora[4]}`;
-            let hInicioISO = `${matchHora[1]}${matchHora[2]}00`;
-            let hFinISO = `${matchHora[3]}${matchHora[4]}00`;
-
+            
             let textoSinHora = bloqueTexto.replace(matchHora[0], "").trim();
-
-            // Extraer Asignatura y Grupo
-            let nombreMateria = "Clase UNAL";
-            let grupo = "";
-            let textoProfesorAula = textoSinHora;
+            let nombreMateria = "Clase UNAL", grupo = "", textoProfesorAula = textoSinHora;
 
             let matchGrupo = textoSinHora.match(/^(.*?)\s+(\d+\s*\([^)]+\))\s*(.*)$/);
             if (matchGrupo) {
@@ -216,215 +238,289 @@
               textoProfesorAula = matchGrupo[3].trim();
             }
 
-            // Separar Profesor de Ubicación
             let regexAulaKey = /(SAL[OÓ]N|AUDITORIO|SALA|LABORATORIO|Aula Virtual)/i;
             let matchAula = textoProfesorAula.match(regexAulaKey);
-
-            let profesor = "";
-            let textoAulaRaw = "Universidad Nacional de Colombia";
+            let profesor = "", textoAulaRaw = "Universidad Nacional de Colombia";
 
             if (matchAula) {
-              let idxAula = matchAula.index;
-              profesor = limpiarProfesor(textoProfesorAula.substring(0, idxAula));
-              textoAulaRaw = textoProfesorAula.substring(idxAula).trim();
+              profesor = limpiarProfesor(textoProfesorAula.substring(0, matchAula.index));
+              textoAulaRaw = textoProfesorAula.substring(matchAula.index).trim();
             } else {
               profesor = limpiarProfesor(textoProfesorAula);
             }
 
-            // Aplicar la regla exacta de 3 dígitos
             const ubicacion = procesarEdificioYAula(textoAulaRaw, profesor);
 
+            // LOGICA CORREGIDA: Se evalúa estrictamente por el nombre del grupo del SIA
+            let esLab = grupo.toLowerCase().includes("lab");
+            let agrupador = `${codigo}-${grupo}`; // Se separan siempre magistrales y laboratorios
+            
+            let nombreMateriaFinal = (esLab && !nombreMateria.toLowerCase().includes("lab")) 
+                                     ? `(Lab) ${nombreMateria}` 
+                                     : nombreMateria;
+
             eventosRaw.push({
+              agrupador: agrupador,
               codigo: codigo,
-              materia: nombreMateria,
+              materia: nombreMateriaFinal,
               grupo: grupo,
               profesor: profesor,
               edificio: ubicacion.edificio,
               aula: ubicacion.salon,
-              ubicacionCompleta: ubicacion.ubicacionCompleta,
               dia: diaActual,
-              horaInicio: hInicioISO,
-              horaFin: hFinISO,
+              horaInicio: `${matchHora[1]}${matchHora[2]}00`,
+              horaFin: `${matchHora[3]}${matchHora[4]}00`,
               horaTexto: `${hIniStr} - ${hFinStr}`
             });
           }
         } else {
           let matchDiaSolo = linea.match(/^\b(LUNES|MARTES|MIÉRCOLES|MIERCOLES|JUEVES|VIERNES|SÁBADO|SABADO)\b/i);
-          if (matchDiaSolo) {
-            let dStr = matchDiaSolo[1].toUpperCase();
-            if (DIAS_MAP[dStr]) diaActual = DIAS_MAP[dStr];
-          }
+          if (matchDiaSolo) diaActual = DIAS_MAP[matchDiaSolo[1].toUpperCase()];
         }
         i++;
       }
 
-      // Deduplicar eventos repetidos por bloques de semanas
-      let eventosUnicos = [];
-      let mapaClaves = {};
-
+      let eventosUnicos = [], mapaClaves = {};
       for (let ev of eventosRaw) {
-        let clave = `${ev.dia}_${ev.horaInicio}_${ev.materia}`;
+        let clave = `${ev.dia}_${ev.horaInicio}_${ev.agrupador}`;
         if (!mapaClaves[clave]) {
           mapaClaves[clave] = true;
           eventosUnicos.push(ev);
-        } else {
-          let existente = eventosUnicos.find(e => `${e.dia}_${e.horaInicio}_${e.materia}` === clave);
-          if (existente && ev.ubicacionCompleta.length > existente.ubicacionCompleta.length) {
-            existente.edificio = ev.edificio;
-            existente.aula = ev.aula;
-            existente.ubicacionCompleta = ev.ubicacionCompleta;
-          }
         }
       }
-
       return eventosUnicos;
     }
 
     function limpiarProfesor(profStr) {
       if (!profStr) return "";
-      let p = profStr.trim();
-      let partes = p.split(/\s+/);
-      let mitad = Math.floor(partes.length / 2);
+      let p = profStr.trim(), partes = p.split(/\s+/), mitad = Math.floor(partes.length / 2);
       if (partes.length >= 4 && partes.length % 2 === 0) {
-        let primeraMitad = partes.slice(0, mitad).join(" ");
-        let segundaMitad = partes.slice(mitad).join(" ");
-        if (primeraMitad.toLowerCase() === segundaMitad.toLowerCase()) {
-          return primeraMitad;
-        }
+        let p1 = partes.slice(0, mitad).join(" "), p2 = partes.slice(mitad).join(" ");
+        if (p1.toLowerCase() === p2.toLowerCase()) return p1;
       }
       return p;
     }
 
-  function procesarEdificioYAula(textoAula, profesor) {
-  // 1. Limpiar el nombre del profesor si quedó cruzado
-  if (profesor && profesor.length > 3) {
-    let profClean = profesor.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    textoAula = textoAula.replace(new RegExp(profClean, 'gi'), '');
-  }
+    function procesarEdificioYAula(textoAula, profesor) {
+      if (profesor && profesor.length > 3) {
+        let profClean = profesor.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        textoAula = textoAula.replace(new RegExp(profClean, 'gi'), '');
+      }
+      textoAula = textoAula.replace(/^[\s\-]+|[\s\-]+$/g, '').trim();
+      const matches3 = textoAula.match(/\b\d{3}\b/g) || [];
+      let edificio = "UNAL", salon = textoAula;
 
-  textoAula = textoAula.replace(/^[\s\-]+|[\s\-]+$/g, '').trim();
-
-  // Extraer todas las cadenas de exactamente 3 caracteres numéricos
-  const matches3 = textoAula.match(/\b\d{3}\b/g) || [];
-
-  let edificio = "UNAL";
-  let salon = textoAula; // Por defecto consigna todo el texto del aula
-
-  if (matches3.length > 0) {
-    // Siempre es la primera cadena que hay en el campo
-    edificio = matches3[0];
-
-    // Identificar si existe otra cadena distinta (ignora las que son iguales al edificio)
-    let numeroDistinto = matches3.find(num => num !== edificio);
-
-    if (numeroDistinto) {
-      salon = `Salón ${numeroDistinto}`;
+      if (matches3.length > 0) {
+        edificio = matches3[0];
+        let numeroDistinto = matches3.find(num => num !== edificio);
+        if (numeroDistinto) salon = `Salón ${numeroDistinto}`;
+      } else if (textoAula.toLowerCase().includes("virtual")) {
+        edificio = "Virtual";
+        salon = "Aula Virtual";
+      }
+      return { edificio, salon };
     }
-    // Si no encuentra otra distinta, 'salon' conserva todo el texto para corregir
-    
-  } else if (textoAula.toLowerCase().includes("virtual")) {
-    edificio = "Virtual";
-    salon = "Aula Virtual";
-  }
 
-  return {
-    edificio: edificio,
-    salon: salon,
-    ubicacionCompleta: edificio === "Virtual" ? salon : `Edificio ${edificio} - ${salon}`
-  };
-}
-   function actualizarInterfaz() {
-  countEvents.innerText = eventosExtraidos.length;
-  tableBody.innerHTML = "";
+    function agruparMaterias(eventos) {
+      let map = {};
+      let colorIndex = 0;
+      let usarColorUnico = checkColorUnico.checked;
+      let globalColor = colorUnicoPicker.value;
 
-  if (eventosExtraidos.length === 0) {
-    tableBody.innerHTML = '<tr><td colspan="6">No se detectaron clases. Revisa el texto en el visor inferior.</td></tr>';
-    btnGenerar.disabled = true;
-    statusText.innerText = "Estado: 0 clases encontradas.";
-    return;
-  }
+      eventos.forEach(ev => {
+        if (!map[ev.agrupador]) {
+          map[ev.agrupador] = {
+            agrupador: ev.agrupador,
+            codigo: ev.codigo,
+            nombre: ev.materia,
+            color: usarColorUnico ? globalColor : PALETA_COLORES[colorIndex % PALETA_COLORES.length],
+            sesiones: []
+          };
+          colorIndex++;
+        }
+        map[ev.agrupador].sesiones.push(ev);
+      });
+      materiasExtraidas = Object.values(map);
+    }
 
-  // Se añade 'index' para identificar qué evento se está editando
-  eventosExtraidos.forEach((ev, index) => {
-    const row = document.createElement('tr');
-    row.innerHTML = `
-      <td><b>${ev.dia}</b></td>
-      <td>${ev.materia}</td>
-      <td>${ev.horaTexto}</td>
-      <td><span class="badge-edificio">${ev.edificio}</span></td>
-      <td>
-        <input type="text" class="input-aula" data-index="${index}" value="${ev.aula}" 
-               style="width: 100%; padding: 0.3rem; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-family: inherit;">
-      </td>
-      <td>${ev.profesor}</td>
-    `;
-    tableBody.appendChild(row);
-  });
-
-  // Detectar cambios en los inputs y actualizar el arreglo 'eventosExtraidos'
-  document.querySelectorAll('.input-aula').forEach(input => {
-    input.addEventListener('input', (e) => {
-      const idx = e.target.getAttribute('data-index');
-      const nuevoSalon = e.target.value;
+    function actualizarInterfaz() {
+      if (materiasExtraidas.length === 0) {
+        statusText.innerText = "No se detectaron clases. Revisa que el PDF sea válido.";
+        return;
+      }
       
-      eventosExtraidos[idx].aula = nuevoSalon;
-      eventosExtraidos[idx].ubicacionCompleta = eventosExtraidos[idx].edificio === "Virtual" 
-        ? nuevoSalon 
-        : `Edificio ${eventosExtraidos[idx].edificio} - ${nuevoSalon}`;
-    });
-  });
+      statusText.innerText = `¡Procesamiento exitoso! Se detectaron ${materiasExtraidas.length} bloques de asignaturas. Edita lo que necesites.`;
+      dashboard.classList.remove('hidden');
+      
+      renderMateriasList();
+      renderCalendar();
+    }
 
-  btnGenerar.disabled = false;
-  statusText.innerText = `Estado: ¡Procesamiento exitoso! Se detectaron ${eventosExtraidos.length} asignaturas.`;
-}
+    function renderMateriasList() {
+      const container = document.getElementById('materiasList');
+      container.innerHTML = '';
+
+      materiasExtraidas.forEach((mat, mIdx) => {
+        const matDiv = document.createElement('div');
+        matDiv.className = 'materia-card';
+        
+        let sesionesHtml = mat.sesiones.map((ses, sIdx) => `
+          <tr>
+            <td><b>${ses.dia}</b></td>
+            <td style="white-space: nowrap;">${ses.horaTexto}</td>
+            <td><input type="text" value="${ses.edificio}" data-midx="${mIdx}" data-sidx="${sIdx}" class="input-edificio" placeholder="Edificio"></td>
+            <td><input type="text" value="${ses.aula}" data-midx="${mIdx}" data-sidx="${sIdx}" class="input-aula" placeholder="Salón"></td>
+          </tr>
+        `).join('');
+
+        matDiv.innerHTML = `
+          <div class="materia-header">
+            <input type="color" value="${mat.color}" data-midx="${mIdx}" class="color-picker" title="Cambiar color">
+            <input type="text" value="${mat.nombre}" data-midx="${mIdx}" class="materia-name-input" title="Modificar nombre de la asignatura">
+            <span class="codigo-badge">${mat.codigo}</span>
+          </div>
+          <table class="sesiones-table">
+            <thead>
+              <tr><th>Día</th><th>Hora</th><th>Edificio</th><th>Aula/Salón</th></tr>
+            </thead>
+            <tbody>${sesionesHtml}</tbody>
+          </table>
+        `;
+        container.appendChild(matDiv);
+      });
+
+      document.querySelectorAll('.color-picker').forEach(el => {
+        el.addEventListener('input', (e) => {
+          const mIdx = e.target.dataset.midx;
+          materiasExtraidas[mIdx].color = e.target.value;
+          
+          if (checkColorUnico.checked) {
+            checkColorUnico.checked = false;
+            colorUnicoPicker.disabled = true;
+          }
+          renderCalendar();
+        });
+      });
+
+      document.querySelectorAll('.materia-name-input').forEach(el => {
+        el.addEventListener('input', (e) => {
+          const mIdx = e.target.dataset.midx;
+          materiasExtraidas[mIdx].nombre = e.target.value;
+          renderCalendar();
+        });
+      });
+
+      document.querySelectorAll('.input-edificio, .input-aula').forEach(el => {
+        el.addEventListener('input', (e) => {
+          const mIdx = e.target.dataset.midx;
+          const sIdx = e.target.dataset.sidx;
+          if (e.target.classList.contains('input-edificio')) materiasExtraidas[mIdx].sesiones[sIdx].edificio = e.target.value;
+          if (e.target.classList.contains('input-aula')) materiasExtraidas[mIdx].sesiones[sIdx].aula = e.target.value;
+          renderCalendar();
+        });
+      });
+    }
+
+    function renderCalendar() {
+      const cal = document.getElementById('calendarView');
+      const dias = ['LU', 'MA', 'MI', 'JU', 'VI', 'SA'];
+      const diasNombres = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+      
+      let html = `<div class="cal-wrapper">
+        <div class="cal-times">
+          <div style="height: 38px; border-bottom: 1px solid #d0d7de;"></div>`;
+      
+      for(let h = 6; h <= 21; h++) {
+        html += `<div class="cal-time-cell"><span>${h}:00</span></div>`;
+      }
+      html += `<div class="cal-time-cell" style="height:0;"><span>22:00</span></div></div><div class="cal-grid">`;
+
+      dias.forEach((dia, index) => {
+        html += `<div class="cal-day-col">
+          <div class="cal-day-header">${diasNombres[index]}</div>
+          <div class="cal-day-body">`;
+        
+        for(let h = 0; h <= 16; h++) {
+          html += `<div class="cal-grid-line" style="top: ${h * 40}px;"></div>`;
+        }
+
+        materiasExtraidas.forEach(mat => {
+          mat.sesiones.filter(s => s.dia === dia).forEach(sesion => {
+            const startH = parseInt(sesion.horaInicio.substring(0,2));
+            const startM = parseInt(sesion.horaInicio.substring(2,4));
+            const endH = parseInt(sesion.horaFin.substring(0,2));
+            const endM = parseInt(sesion.horaFin.substring(2,4));
+            
+            const top = ((startH - 6) + (startM / 60)) * 40;
+            const height = ((endH - startH) + ((endM - startM) / 60)) * 40;
+            
+            html += `<div class="cal-event" style="top: ${top}px; height: ${height}px; background-color: ${mat.color};">
+              <strong>${mat.nombre}</strong>
+              ${sesion.edificio === "Virtual" ? sesion.aula : sesion.edificio + ' - ' + sesion.aula}
+            </div>`;
+          });
+        });
+
+        html += `</div></div>`;
+      });
+
+      html += `</div></div>`;
+      cal.innerHTML = html;
+    }
+
     function obtenerFechaInicioParaDia(fechaInicioStr, diaCodigo) {
-      const mapDays = { 'MO': 1, 'TU': 2, 'WE': 3, 'TH': 4, 'FR': 5, 'SA': 6 };
+      const mapDays = { 'MO': 1, 'LU': 1, 'TU': 2, 'MA': 2, 'WE': 3, 'MI': 3, 'TH': 4, 'JU': 4, 'FR': 5, 'VI': 5, 'SA': 6 };
       const targetDay = mapDays[diaCodigo];
-
       const parts = fechaInicioStr.split('-');
       let cur = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
 
-      while (cur.getDay() !== targetDay) {
-        cur.setDate(cur.getDate() + 1);
-      }
-
-      const yyyy = cur.getFullYear();
-      const mm = String(cur.getMonth() + 1).padStart(2, '0');
-      const dd = String(cur.getDate()).padStart(2, '0');
+      while (cur.getDay() !== targetDay) { cur.setDate(cur.getDate() + 1); }
+      const yyyy = cur.getFullYear(), mm = String(cur.getMonth() + 1).padStart(2, '0'), dd = String(cur.getDate()).padStart(2, '0');
       return `${yyyy}${mm}${dd}`;
     }
+
+    const MAPA_ICS_DIAS = { 'LU': 'MO', 'MA': 'TU', 'MI': 'WE', 'JU': 'TH', 'VI': 'FR', 'SA': 'SA' };
 
     btnGenerar.addEventListener('click', () => {
       const fechaInicioInput = document.getElementById('fechaInicio').value;
       const fechaFinInput = document.getElementById('fechaFin').value;
+      const notificacionVal = parseInt(document.getElementById('notificacion').value);
 
-      if (!fechaInicioInput || !fechaFinInput) {
-        alert("Por favor selecciona las fechas de inicio y fin del semestre.");
-        return;
-      }
+      if (!fechaInicioInput || !fechaFinInput) return alert("Por favor selecciona las fechas del semestre.");
 
       const fechaUntilISO = `${fechaFinInput.replace(/-/g, '')}T235959Z`;
 
-      let icsContent = [
-        'BEGIN:VCALENDAR',
-        'VERSION:2.0',
-        'PRODID:-//UNAL//Horario SIA Calendar//ES',
-        'CALSCALE:GREGORIAN'
-      ];
+      let icsContent = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//UNAL//Horario SIA Calendar//ES', 'CALSCALE:GREGORIAN'];
 
-      eventosExtraidos.forEach(ev => {
-        const fechaPrimeraClase = obtenerFechaInicioParaDia(fechaInicioInput, ev.dia);
+      materiasExtraidas.forEach(mat => {
+        mat.sesiones.forEach(ses => {
+          const fechaPrimeraClase = obtenerFechaInicioParaDia(fechaInicioInput, ses.dia);
+          let ubicacionFinal = (ses.edificio === "Virtual" || ses.edificio === "UNAL") ? ses.aula : `Edificio ${ses.edificio} - ${ses.aula}`;
+          let diaICS = MAPA_ICS_DIAS[ses.dia];
 
-        icsContent.push(
-          'BEGIN:VEVENT',
-          `SUMMARY:${ev.materia}`,
-          `LOCATION:${ev.ubicacionCompleta}`,
-          `DESCRIPTION:Grupo: ${ev.grupo} - Profesor: ${ev.profesor}`,
-          `DTSTART;TZID=America/Bogota:${fechaPrimeraClase}T${ev.horaInicio}`,
-          `DTEND;TZID=America/Bogota:${fechaPrimeraClase}T${ev.horaFin}`,
-          `RRULE:FREQ=WEEKLY;UNTIL=${fechaUntilISO};BYDAY=${ev.dia}`,
-          'END:VEVENT'
-        );
+          icsContent.push(
+            'BEGIN:VEVENT',
+            `SUMMARY:${mat.nombre}`,
+            `LOCATION:${ubicacionFinal}`,
+            `DESCRIPTION:Grupo: ${ses.grupo} - Profesor: ${ses.profesor}`,
+            `COLOR:${mat.color}`,
+            `DTSTART;TZID=America/Bogota:${fechaPrimeraClase}T${ses.horaInicio}`,
+            `DTEND;TZID=America/Bogota:${fechaPrimeraClase}T${ses.horaFin}`,
+            `RRULE:FREQ=WEEKLY;UNTIL=${fechaUntilISO};BYDAY=${diaICS}`
+          );
+
+          if (notificacionVal > 0) {
+            icsContent.push(
+              'BEGIN:VALARM',
+              'ACTION:DISPLAY',
+              'DESCRIPTION:Recordatorio de clase',
+              `TRIGGER:-PT${notificacionVal}M`,
+              'END:VALARM'
+            );
+          }
+
+          icsContent.push('END:VEVENT');
+        });
       });
 
       icsContent.push('END:VCALENDAR');
@@ -433,7 +529,7 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'horario_unal.ics';
+      a.download = 'horario_unal_agrupado.ics';
       a.click();
     });
   </script>
