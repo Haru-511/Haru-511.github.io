@@ -7,7 +7,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <style>
     :root { --primary: #0056b3; --primary-hover: #004494; --success: #0F9D58; --success-hover: #0b8043; --bg: #f4f7f9; --text: #2c3e50; --border: #cfd9e0; }
-    body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; margin: 0; padding: 0; color: var(--text); background-color: var(--bg); line-height: 1.5; }
+    body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; margin: 0; padding: 0; color: var(--text); background-color: var(--bg); line-height: 1.5; overflow-x: hidden; }
     
     /* Contenedor centralizado para el Paso 1 */
     .welcome-screen { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; box-sizing: border-box; transition: opacity 0.4s ease; }
@@ -18,7 +18,7 @@
     .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
     @media (max-width: 600px) { .action-grid { grid-template-columns: 1fr; } }
     
-    /* Botones y subida de archivos mejorada */
+    /* Botones y subida */
     .btn { display: inline-block; padding: 0.8rem 1.5rem; border-radius: 6px; font-size: 1rem; font-weight: 600; text-align: center; cursor: pointer; transition: all 0.2s; border: none; }
     .btn-primary { background: var(--primary); color: #fff; }
     .btn-primary:hover:not(:disabled) { background: var(--primary-hover); transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0,86,179,0.2); }
@@ -34,7 +34,7 @@
     .manual-card { border: 2px solid #e2e8f0; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem 1rem; border-radius: 8px; height: 100%; box-sizing: border-box; }
     .manual-card p { font-size: 0.9rem; margin-bottom: 1rem; color: #666; }
 
-    /* Espacio de trabajo (Oculto al inicio) */
+    /* Espacio de trabajo */
     .workspace { max-width: 1300px; margin: 0 auto; padding: 2rem 1rem; display: none; opacity: 0; transition: opacity 0.5s ease; }
     .workspace.active { display: block; opacity: 1; }
     
@@ -50,11 +50,11 @@
     @media (max-width: 1000px) { .dashboard { grid-template-columns: 1fr; } }
     
     .materia-card { border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
-    .materia-header { display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; }
+    .materia-header { display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; padding: 5px; border-radius: 6px; }
     .color-picker { width: 35px; height: 35px; border: none; border-radius: 4px; cursor: pointer; padding: 0; outline: none; flex: none; background: transparent; }
     input[type="text"], input[type="time"] { padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; font-size: 0.9rem; width: 100%; box-sizing: border-box; }
     input[type="text"].materia-name-input { font-size: 1.05rem; font-weight: bold; flex: 1; min-width: 50px; }
-    input[type="text"].codigo-input { flex: none; font-family: monospace; background: #eaecf0; color: #444; width: 95px; text-align: center; font-weight: bold; }
+    input[type="text"].codigo-input { flex: none; font-family: monospace; background: #eaecf0; color: #444; width: 95px; text-align: center; font-weight: bold; border: 1px solid #ccc;}
     
     .sesiones-table { width: 100%; border-collapse: collapse; margin-bottom: 0.5rem; }
     .sesiones-table th, .sesiones-table td { border: 1px solid var(--border); padding: 6px; text-align: left; font-size: 0.85rem; }
@@ -78,9 +78,32 @@
     
     .hidden { display: none !important; }
     .status-badge { background: #e0f2fe; color: #0369a1; padding: 0.4rem 0.8rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; }
+
+    /* ========================================= */
+    /*   ESTILOS PARA EL TUTORIAL INTERACTIVO    */
+    /* ========================================= */
+    .tutorial-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.7); z-index: 9999; backdrop-filter: blur(2px); transition: opacity 0.3s ease; pointer-events: auto; }
+    .tutorial-highlight { position: relative !important; z-index: 10000 !important; background: #fff !important; box-shadow: 0 0 0 6px #fff, 0 10px 30px rgba(0,0,0,0.4) !important; border-radius: 8px !important; pointer-events: none !important; transition: all 0.3s ease; }
+    .tutorial-tooltip { position: absolute; z-index: 10001; background: #fff; padding: 1.5rem; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.4); width: 320px; transition: top 0.4s ease, left 0.4s ease; border-left: 5px solid var(--primary); }
+    .tutorial-tooltip h4 { margin: 0 0 0.5rem 0; color: var(--primary); font-size: 1.1rem; }
+    .tutorial-tooltip p { margin: 0 0 1.2rem 0; font-size: 0.95rem; color: #444; }
+    .tutorial-actions { display: flex; justify-content: flex-end; align-items: center; gap: 1rem; }
+    .btn-skip { background: transparent; color: #64748b; border: none; font-size: 0.85rem; cursor: pointer; text-decoration: underline; }
+    .btn-skip:hover { color: #334155; }
   </style>
 </head>
 <body>
+
+  <!-- Overlay y Tooltip del Tutorial -->
+  <div id="tutorialOverlay" class="tutorial-overlay hidden"></div>
+  <div id="tutorialTooltip" class="tutorial-tooltip hidden">
+    <h4 id="tutorialTitle">Título</h4>
+    <p id="tutorialText">Texto del paso actual.</p>
+    <div class="tutorial-actions">
+      <button id="btnTutorialSkip" class="btn-skip">Saltar tutorial</button>
+      <button id="btnTutorialNext" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.9rem;">Entendido</button>
+    </div>
+  </div>
 
   <!-- PASO 1: PANTALLA DE BIENVENIDA -->
   <div id="welcomeScreen" class="welcome-screen">
@@ -110,8 +133,7 @@
   <!-- PASO 2: ESPACIO DE TRABAJO -->
   <div id="mainWorkspace" class="workspace">
     
-    <!-- Barra de herramientas superior -->
-    <div class="top-bar">
+    <div class="top-bar" id="tutorial-step-3">
       <div class="config-group">
         <div class="input-group">
           <label for="fechaInicio">Inicio de clases</label>
@@ -141,13 +163,12 @@
         </div>
       </div>
       
-      <div style="display: flex; gap: 10px;">
+      <div style="display: flex; gap: 10px;" id="tutorial-step-5">
         <button class="btn" style="background: #e2e8f0; color: #475569;" onclick="location.reload()">⟲ Reiniciar</button>
         <button id="btnGenerar" class="btn btn-primary">⬇️ Descargar .ics</button>
       </div>
     </div>
 
-    <!-- Panel de edición y visualización -->
     <div class="dashboard">
       <div>
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
@@ -167,50 +188,154 @@
   <script>
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-    // UI Elements
     const welcomeScreen = document.getElementById('welcomeScreen');
     const mainWorkspace = document.getElementById('mainWorkspace');
     const input = document.getElementById('pdfInput');
     const btnGenerar = document.getElementById('btnGenerar');
     const loadingText = document.getElementById('loadingText');
     const statusBadge = document.getElementById('statusBadge');
-    
     const checkColorUnico = document.getElementById('checkColorUnico');
     const colorUnicoPicker = document.getElementById('colorUnicoPicker');
 
     let materiasExtraidas = [];
+    let tutorialHaSidoMostrado = false;
+
     const PALETA_COLORES = ['#4285F4', '#0F9D58', '#F4B400', '#DB4437', '#673AB7', '#00ACC1', '#FF7043', '#827717', '#795548', '#E91E63'];
     const DIAS_MAP = { 'LUNES': 'LU', 'MARTES': 'MA', 'MIÉRCOLES': 'MI', 'MIERCOLES': 'MI', 'JUEVES': 'JU', 'VIERNES': 'VI', 'SÁBADO': 'SA', 'SABADO': 'SA' };
 
-    // --- Transición UI ---
+    // ==========================================
+    // SISTEMA DE TUTORIAL ONBOARDING
+    // ==========================================
+    let tutorialSteps = [];
+    let currentStep = 0;
+
+    function iniciarTutorial() {
+      if (tutorialHaSidoMostrado) return; // Solo mostrar una vez por recarga
+
+      // Definir dinámicamente los elementos objetivo (ya renderizados)
+      tutorialSteps = [
+        {
+          element: document.querySelector('.materia-header'),
+          title: '📝 Edita el Nombre y Color',
+          text: 'Haz clic en el nombre de la materia o en el cuadro de color para editarlos libremente. ¡Personalízalo a tu gusto!'
+        },
+        {
+          element: document.querySelector('.sesiones-table'),
+          title: '🕒 Verifica Días y Salones',
+          text: 'Aquí puedes revisar la hora y el lugar. Si el SIA registró algo mal, puedes modificar el día, la hora o el edificio directamente en estas casillas.'
+        },
+        {
+          element: document.getElementById('tutorial-step-3'),
+          title: '⚙️ Configuración y Notificaciones',
+          text: 'Ajusta las fechas del semestre, dile al calendario si quieres que te avise minutos antes de clase, o pinta todo el horario del mismo color.'
+        },
+        {
+          element: document.getElementById('calendarView'),
+          title: '📅 Vista en Tiempo Real',
+          text: 'Cualquier cambio que hagas a la izquierda (horas, días o colores) se actualizará automáticamente aquí para que veas cómo queda tu semana.'
+        },
+        {
+          element: document.getElementById('tutorial-step-5'),
+          title: '⬇️ ¡Descarga tu Horario!',
+          text: 'Cuando todo esté perfecto, haz clic en Descargar. Te generará un archivo .ics que podrás abrir en Google Calendar, Outlook o Apple Calendar.'
+        }
+      ];
+
+      currentStep = 0;
+      tutorialHaSidoMostrado = true;
+      document.getElementById('tutorialOverlay').classList.remove('hidden');
+      document.getElementById('tutorialTooltip').classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      mostrarPasoTutorial();
+    }
+
+    function mostrarPasoTutorial() {
+      document.querySelectorAll('.tutorial-highlight').forEach(el => el.classList.remove('tutorial-highlight'));
+      
+      if (currentStep >= tutorialSteps.length) {
+        finalizarTutorial();
+        return;
+      }
+
+      const step = tutorialSteps[currentStep];
+      const el = step.element;
+      
+      if(el) {
+        el.classList.add('tutorial-highlight');
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        setTimeout(() => {
+          const rect = el.getBoundingClientRect();
+          const tooltip = document.getElementById('tutorialTooltip');
+          
+          document.getElementById('tutorialTitle').innerText = step.title;
+          document.getElementById('tutorialText').innerText = step.text;
+          
+          // Calcular posición de la caja de diálogo flotante
+          let top = rect.bottom + window.scrollY + 20;
+          let left = rect.left + window.scrollX + (rect.width / 2) - 160; 
+          
+          // Evitar que se salga de la pantalla
+          if (left + 350 > window.innerWidth) left = window.innerWidth - 350;
+          if (left < 20) left = 20;
+          
+          // Si el elemento está muy abajo en la pantalla, mostrar el tooltip arriba de él
+          if (rect.bottom + 200 > window.innerHeight) {
+            top = rect.top + window.scrollY - tooltip.offsetHeight - 20;
+          }
+
+          tooltip.style.top = top + 'px';
+          tooltip.style.left = left + 'px';
+          
+          document.getElementById('btnTutorialNext').innerText = (currentStep === tutorialSteps.length - 1) ? '¡Empezar a editar!' : 'Entendido';
+        }, 300); // Pequeño retraso para dejar que haga el scroll
+      } else {
+        currentStep++;
+        mostrarPasoTutorial();
+      }
+    }
+
+    function finalizarTutorial() {
+      document.getElementById('tutorialOverlay').classList.add('hidden');
+      document.getElementById('tutorialTooltip').classList.add('hidden');
+      document.querySelectorAll('.tutorial-highlight').forEach(el => el.classList.remove('tutorial-highlight'));
+    }
+
+    document.getElementById('btnTutorialNext').addEventListener('click', () => { currentStep++; mostrarPasoTutorial(); });
+    document.getElementById('btnTutorialSkip').addEventListener('click', finalizarTutorial);
+
+
+    // ==========================================
+    // LOGICA DE LA APLICACIÓN
+    // ==========================================
+    
     function activarWorkspace(mensaje) {
       welcomeScreen.style.opacity = '0';
       setTimeout(() => {
         welcomeScreen.style.display = 'none';
         mainWorkspace.classList.add('active');
         statusBadge.innerHTML = `✓ ${mensaje}`;
+        
+        // Iniciar el tutorial una vez la pantalla es visible
+        setTimeout(() => iniciarTutorial(), 300);
       }, 400);
     }
 
-    // --- Helpers de Tiempo ---
     function formatToTimeInput(isoStr) {
       if (!isoStr || isoStr.length < 6) return "07:00";
       return isoStr.substring(0,2) + ":" + isoStr.substring(2,4);
     }
+    
     function formatToISO(timeStr) {
       if (!timeStr) return "070000";
       return timeStr.replace(":", "") + "00";
     }
 
-    // --- Lógica Color Global ---
     checkColorUnico.addEventListener('change', (e) => {
       colorUnicoPicker.disabled = !e.target.checked;
       if (materiasExtraidas.length > 0) {
-        if (e.target.checked) {
-          materiasExtraidas.forEach(m => m.color = colorUnicoPicker.value);
-        } else {
-          materiasExtraidas.forEach((m, i) => m.color = PALETA_COLORES[i % PALETA_COLORES.length]);
-        }
+        if (e.target.checked) materiasExtraidas.forEach(m => m.color = colorUnicoPicker.value);
+        else materiasExtraidas.forEach((m, i) => m.color = PALETA_COLORES[i % PALETA_COLORES.length]);
         renderMateriasList(); renderCalendar();
       }
     });
@@ -222,26 +347,23 @@
       }
     });
 
-    // --- Añadir Materias Manualmente ---
     function agregarMateriaManual(desdeCero = false) {
       let usarColorUnico = checkColorUnico.checked;
       let nuevoColor = usarColorUnico ? colorUnicoPicker.value : PALETA_COLORES[materiasExtraidas.length % PALETA_COLORES.length];
 
       materiasExtraidas.unshift({ 
-        agrupador: `MANUAL-${Date.now()}`, codigo: "0000000", nombre: "Nueva Materia (Manual)", color: nuevoColor,
+        agrupador: `MANUAL-${Date.now()}`, codigo: "0000000", nombre: "Nueva Materia", color: nuevoColor,
         sesiones: [{ dia: 'LU', horaInicio: '070000', horaFin: '090000', edificio: 'UNAL', aula: 'Salón', grupo: '1', profesor: '' }]
       });
 
-      if (desdeCero) activarWorkspace("Modo de creación manual activo");
-      else statusBadge.innerHTML = `✓ ${materiasExtraidas.length} bloques identificados`;
-      
       renderMateriasList(); renderCalendar();
+      if (desdeCero) activarWorkspace("Modo manual");
+      else statusBadge.innerHTML = `✓ ${materiasExtraidas.length} bloques identificados`;
     }
 
     document.getElementById('btnCrearVacio').addEventListener('click', () => agregarMateriaManual(true));
     document.getElementById('btnAddMateriaManual').addEventListener('click', () => agregarMateriaManual(false));
 
-    // --- Lectura de PDF ---
     input.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
@@ -261,13 +383,13 @@
       agruparMaterias(eventosRaw);
       
       if (materiasExtraidas.length === 0) {
-        alert("No detectamos materias. Asegúrate de subir el PDF original del SIA o inténtalo manualmente.");
+        alert("No detectamos materias. Sube un PDF del horario oficial del SIA.");
         loadingText.classList.add('hidden');
         return;
       }
 
-      activarWorkspace(`${materiasExtraidas.length} bloques identificados`);
       renderMateriasList(); renderCalendar();
+      activarWorkspace(`${materiasExtraidas.length} bloques identificados`);
     });
 
     async function extraerLineasOrdenadas(page) {
@@ -374,7 +496,6 @@
       materiasExtraidas = Object.values(map);
     }
 
-    // --- Renderizado y Eventos del Editor ---
     function renderMateriasList() {
       const container = document.getElementById('materiasList');
       container.innerHTML = '';
@@ -423,12 +544,12 @@
             </thead>
             <tbody>${sesionesHtml}</tbody>
           </table>
-          <button class="btn-add-sesion" data-midx="${mIdx}" style="background: #f1f5f9; color: #0f172a; border: 1px dashed #cbd5e1; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: bold; width: 100%;">+ Añadir clase</button>
+          <button class="btn-add-sesion" data-midx="${mIdx}" style="background: #f1f5f9; color: #0f172a; border: 1px dashed #cbd5e1; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: bold; width: 100%;">+ Añadir clase a esta materia</button>
         `;
         container.appendChild(matDiv);
       });
 
-      // Listeners
+      // Listeners editables
       document.querySelectorAll('.color-picker').forEach(el => el.addEventListener('input', (e) => { materiasExtraidas[e.target.dataset.midx].color = e.target.value; if (checkColorUnico.checked) { checkColorUnico.checked = false; colorUnicoPicker.disabled = true; } renderCalendar(); }));
       document.querySelectorAll('.materia-name-input').forEach(el => el.addEventListener('input', (e) => { materiasExtraidas[e.target.dataset.midx].nombre = e.target.value; renderCalendar(); }));
       document.querySelectorAll('.codigo-input').forEach(el => el.addEventListener('input', (e) => { materiasExtraidas[e.target.dataset.midx].codigo = e.target.value; }));
