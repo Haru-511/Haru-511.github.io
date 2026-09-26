@@ -10,25 +10,34 @@
     .card { border: 1px solid #d0d7de; border-radius: 8px; padding: 1.5rem; background: #ffffff; margin-bottom: 1.5rem; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
     .grid-dates { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin: 1rem 0; }
     label { font-weight: 600; font-size: 0.9rem; display: block; margin-bottom: 0.25rem; color: #444; }
-    input[type="date"], input[type="file"], input[type="text"], select { width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-family: inherit; font-size: 0.95rem; }
+    
+    /* Regla general de inputs */
+    input[type="date"], input[type="file"], input[type="text"], input[type="time"], select { width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-family: inherit; font-size: 0.9rem; }
+    
     button { background: #0056b3; color: white; border: none; padding: 0.75rem 1.25rem; border-radius: 4px; cursor: pointer; font-size: 1rem; font-weight: 600; transition: background 0.2s; }
     button:hover:not(:disabled) { background: #004494; }
     button:disabled { background: #94a3b8; cursor: not-allowed; }
+    .btn-success { background: #0F9D58; }
+    .btn-success:hover { background: #0b8043; }
     .status { font-weight: 600; margin-bottom: 1rem; color: #0056b3; background: #e1f5fe; padding: 0.5rem 1rem; border-radius: 4px; display: inline-block; }
     
     .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; align-items: start; }
     @media (max-width: 900px) { .dashboard { grid-template-columns: 1fr; } }
     
-    .materia-card { border: 1px solid #e1e4e8; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; background: #fafbfc; }
+    .materia-card { border: 1px solid #e1e4e8; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; background: #fafbfc; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
     .materia-header { display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; }
-    .color-picker { width: 40px; height: 40px; border: none; border-radius: 4px; cursor: pointer; padding: 0; outline: none; }
-    .materia-name-input { font-size: 1.05rem; font-weight: bold; flex: 1; border: 1px solid #b7c1cb; }
-    .codigo-badge { font-family: monospace; background: #eaecf0; padding: 6px 10px; border-radius: 4px; color: #555; font-size: 0.85rem; font-weight: bold; }
+    .color-picker { width: 40px; height: 40px; border: none; border-radius: 4px; cursor: pointer; padding: 0; outline: none; flex: none; }
+    
+    /* FIX: Reglas específicas para que no se aplasten las cajas de texto */
+    input[type="text"].materia-name-input { font-size: 1.05rem; font-weight: bold; flex: 1; min-width: 50px; border: 1px solid #b7c1cb; }
+    input[type="text"].codigo-input { flex: none; font-family: monospace; background: #eaecf0; padding: 6px 10px; border-radius: 4px; color: #555; font-size: 0.85rem; font-weight: bold; width: 110px; border: 1px solid #ccc; text-align: center; }
+    
     .sesiones-table { width: 100%; border-collapse: collapse; background: #fff; margin-bottom: 0.5rem; }
     .sesiones-table th, .sesiones-table td { border: 1px solid #e1e4e8; padding: 6px; text-align: left; font-size: 0.85rem; }
     .sesiones-table th { background: #f6f8fa; }
+    .time-flex { display: flex; align-items: center; gap: 4px; }
     
-    .cal-container { background: #fff; border: 1px solid #d0d7de; border-radius: 8px; overflow: hidden; }
+    .cal-container { background: #fff; border: 1px solid #d0d7de; border-radius: 8px; overflow: hidden; position: sticky; top: 1rem; }
     .cal-wrapper { display: flex; min-width: 500px; }
     .cal-times { width: 50px; background: #f6f8fa; border-right: 1px solid #d0d7de; }
     .cal-time-cell { height: 40px; position: relative; font-size: 11px; color: #666; }
@@ -49,7 +58,7 @@
 
   <div class="card">
     <h2>Convertidor de Horario UNAL (.pdf a .ics)</h2>
-    <p>Sube tu PDF del SIA para generar tu horario. Ajusta los nombres, salones y colores a tu gusto visualizando cómo quedará tu semana.</p>
+    <p>Sube tu PDF del SIA para generar tu horario, o créalo manualmente si faltan materias de maestría o posgrado.</p>
     
     <div class="grid-dates">
       <div>
@@ -82,17 +91,28 @@
     </div>
 
     <br>
-    <label for="pdfInput">Archivo PDF del Horario SIA:</label>
-    <input type="file" id="pdfInput" accept="application/pdf">
+    <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+      <div>
+        <label for="pdfInput" style="display: inline-block;">Archivo PDF del Horario SIA:</label><br>
+        <input type="file" id="pdfInput" accept="application/pdf" style="max-width: 300px;">
+      </div>
+      <div style="margin-top: 1.2rem;">
+        <span style="font-weight: bold; color: #666; margin-right: 1rem;">O</span>
+        <button id="btnCrearVacio" class="btn-success">Empezar sin PDF</button>
+      </div>
+    </div>
   </div>
 
   <div id="statusText" class="status hidden">Esperando archivo PDF...</div>
 
   <div class="dashboard hidden" id="dashboard">
     <div>
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
         <h3 style="margin: 0;">Materias Identificadas</h3>
-        <button id="btnGenerar">Descargar archivo .ics</button>
+        <div style="display: flex; gap: 0.5rem;">
+          <button id="btnAddMateriaManual" class="btn-success">➕ Añadir Materia</button>
+          <button id="btnGenerar">Descargar .ics</button>
+        </div>
       </div>
       <div id="materiasList"></div>
     </div>
@@ -110,19 +130,24 @@
     const btnGenerar = document.getElementById('btnGenerar');
     const statusText = document.getElementById('statusText');
     const dashboard = document.getElementById('dashboard');
-    
     const checkColorUnico = document.getElementById('checkColorUnico');
     const colorUnicoPicker = document.getElementById('colorUnicoPicker');
 
     let materiasExtraidas = [];
-    
     const PALETA_COLORES = ['#4285F4', '#0F9D58', '#F4B400', '#DB4437', '#673AB7', '#00ACC1', '#FF7043', '#827717', '#795548', '#E91E63'];
+    const DIAS_MAP = { 'LUNES': 'LU', 'MARTES': 'MA', 'MIÉRCOLES': 'MI', 'MIERCOLES': 'MI', 'JUEVES': 'JU', 'VIERNES': 'VI', 'SÁBADO': 'SA', 'SABADO': 'SA' };
 
-    const DIAS_MAP = {
-      'LUNES': 'LU', 'MARTES': 'MA', 'MIÉRCOLES': 'MI', 'MIERCOLES': 'MI',
-      'JUEVES': 'JU', 'VIERNES': 'VI', 'SÁBADO': 'SA', 'SABADO': 'SA'
-    };
+    // --- Helpers de Tiempo ---
+    function formatToTimeInput(isoStr) {
+      if (!isoStr || isoStr.length < 6) return "07:00";
+      return isoStr.substring(0,2) + ":" + isoStr.substring(2,4);
+    }
+    function formatToISO(timeStr) {
+      if (!timeStr) return "070000";
+      return timeStr.replace(":", "") + "00";
+    }
 
+    // --- Lógica Color Global ---
     checkColorUnico.addEventListener('change', (e) => {
       colorUnicoPicker.disabled = !e.target.checked;
       if (materiasExtraidas.length > 0) {
@@ -145,18 +170,41 @@
       }
     });
 
+    // --- Añadir Materias Manualmente ---
+    function agregarMateriaManual() {
+      let usarColorUnico = checkColorUnico.checked;
+      let nuevoColor = usarColorUnico ? colorUnicoPicker.value : PALETA_COLORES[materiasExtraidas.length % PALETA_COLORES.length];
+
+      materiasExtraidas.unshift({ // Añadir arriba
+        agrupador: `MANUAL-${Date.now()}`,
+        codigo: "0000000",
+        nombre: "Nueva Materia (Manual)",
+        color: nuevoColor,
+        sesiones: [{ dia: 'LU', horaInicio: '070000', horaFin: '090000', edificio: 'UNAL', aula: 'Salón', grupo: '1', profesor: '' }]
+      });
+
+      dashboard.classList.remove('hidden');
+      statusText.classList.remove('hidden');
+      statusText.innerText = "¡Materia manual agregada! Edita sus detalles abajo.";
+      renderMateriasList();
+      renderCalendar();
+    }
+
+    document.getElementById('btnAddMateriaManual').addEventListener('click', agregarMateriaManual);
+    document.getElementById('btnCrearVacio').addEventListener('click', agregarMateriaManual);
+
+    // --- Lectura de PDF ---
     input.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
-
       statusText.classList.remove('hidden');
       statusText.innerText = "Leyendo PDF e identificando asignaturas...";
       dashboard.classList.add('hidden');
 
       const buffer = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
-
       let todasLasLineas = [];
+      
       for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
         const page = await pdf.getPage(pageNum);
         const lineasPagina = await extraerLineasOrdenadas(page);
@@ -171,11 +219,7 @@
     async function extraerLineasOrdenadas(page) {
       const textContent = await page.getTextContent();
       if (!textContent.items || textContent.items.length === 0) return [];
-
-      const items = textContent.items
-        .map(item => ({ str: item.str.trim(), x: item.transform[4], y: item.transform[5] }))
-        .filter(item => item.str.length > 0);
-
+      const items = textContent.items.map(item => ({ str: item.str.trim(), x: item.transform[4], y: item.transform[5] })).filter(item => item.str.length > 0);
       items.sort((a, b) => Math.abs(a.y - b.y) > 4 ? b.y - a.y : a.x - b.x);
 
       let lineas = [], filaActual = [], yActual = null;
@@ -184,19 +228,15 @@
           if (filaActual.length > 0) lineas.push(filaActual.map(i => i.str).join(" "));
           filaActual = [item];
           yActual = item.y;
-        } else {
-          filaActual.push(item);
-        }
+        } else { filaActual.push(item); }
       }
       if (filaActual.length > 0) lineas.push(filaActual.map(i => i.str).join(" "));
-
       return lineas;
     }
 
     function parsearLineasUNAL(lineas) {
       let eventosRaw = [];
       let diaActual = "MO";
-
       let i = 0;
       while (i < lineas.length) {
         let linea = lineas[i];
@@ -210,14 +250,11 @@
 
           let codigo = matchInicio[3];
           let restoLinea = matchInicio[4];
-
           let bloqueTexto = restoLinea;
           let j = i + 1;
           while (j < lineas.length) {
             let sigLinea = lineas[j];
-            if (sigLinea.match(/\[?\d{7}[-A-Z]*?\]?/) || sigLinea.match(/^\b(LUNES|MARTES|MIÉRCOLES|MIERCOLES|JUEVES|VIERNES|SÁBADO|SABADO)\b$/i) || sigLinea.match(/\d{2}\/\d{2}\/\d{4}/) || sigLinea.includes("UNIVERSIDAD NACIONAL") || sigLinea.includes("Pag.") || sigLinea.includes("Leyenda de abreviaturas")) {
-              break;
-            }
+            if (sigLinea.match(/\[?\d{7}[-A-Z]*?\]?/) || sigLinea.match(/^\b(LUNES|MARTES|MIÉRCOLES|MIERCOLES|JUEVES|VIERNES|SÁBADO|SABADO)\b$/i) || sigLinea.match(/\d{2}\/\d{2}\/\d{4}/) || sigLinea.includes("UNIVERSIDAD NACIONAL") || sigLinea.includes("Pag.") || sigLinea.includes("Leyenda de abreviaturas")) break;
             bloqueTexto += " " + sigLinea;
             j++;
           }
@@ -225,9 +262,6 @@
 
           let matchHora = bloqueTexto.match(/(\d{2}):(\d{2})\s*[\-]?\s*(\d{2}):(\d{2})/);
           if (matchHora) {
-            let hIniStr = `${matchHora[1]}:${matchHora[2]}`;
-            let hFinStr = `${matchHora[3]}:${matchHora[4]}`;
-            
             let textoSinHora = bloqueTexto.replace(matchHora[0], "").trim();
             let nombreMateria = "Clase UNAL", grupo = "", textoProfesorAula = textoSinHora;
 
@@ -250,14 +284,9 @@
             }
 
             const ubicacion = procesarEdificioYAula(textoAulaRaw, profesor);
-
-            // LOGICA CORREGIDA: Se evalúa estrictamente por el nombre del grupo del SIA
             let esLab = grupo.toLowerCase().includes("lab");
-            let agrupador = `${codigo}-${grupo}`; // Se separan siempre magistrales y laboratorios
-            
-            let nombreMateriaFinal = (esLab && !nombreMateria.toLowerCase().includes("lab")) 
-                                     ? `(Lab) ${nombreMateria}` 
-                                     : nombreMateria;
+            let agrupador = `${codigo}-${grupo}`; 
+            let nombreMateriaFinal = (esLab && !nombreMateria.toLowerCase().includes("lab")) ? `(Lab) ${nombreMateria}` : nombreMateria;
 
             eventosRaw.push({
               agrupador: agrupador,
@@ -269,8 +298,7 @@
               aula: ubicacion.salon,
               dia: diaActual,
               horaInicio: `${matchHora[1]}${matchHora[2]}00`,
-              horaFin: `${matchHora[3]}${matchHora[4]}00`,
-              horaTexto: `${hIniStr} - ${hFinStr}`
+              horaFin: `${matchHora[3]}${matchHora[4]}00`
             });
           }
         } else {
@@ -283,10 +311,7 @@
       let eventosUnicos = [], mapaClaves = {};
       for (let ev of eventosRaw) {
         let clave = `${ev.dia}_${ev.horaInicio}_${ev.agrupador}`;
-        if (!mapaClaves[clave]) {
-          mapaClaves[clave] = true;
-          eventosUnicos.push(ev);
-        }
+        if (!mapaClaves[clave]) { mapaClaves[clave] = true; eventosUnicos.push(ev); }
       }
       return eventosUnicos;
     }
@@ -315,8 +340,7 @@
         let numeroDistinto = matches3.find(num => num !== edificio);
         if (numeroDistinto) salon = `Salón ${numeroDistinto}`;
       } else if (textoAula.toLowerCase().includes("virtual")) {
-        edificio = "Virtual";
-        salon = "Aula Virtual";
+        edificio = "Virtual"; salon = "Aula Virtual";
       }
       return { edificio, salon };
     }
@@ -345,17 +369,16 @@
 
     function actualizarInterfaz() {
       if (materiasExtraidas.length === 0) {
-        statusText.innerText = "No se detectaron clases. Revisa que el PDF sea válido.";
+        statusText.innerText = "No se detectaron clases. Revisa que el PDF sea válido o comienza manualmente.";
         return;
       }
-      
-      statusText.innerText = `¡Procesamiento exitoso! Se detectaron ${materiasExtraidas.length} bloques de asignaturas. Edita lo que necesites.`;
+      statusText.innerText = `¡Procesamiento exitoso! Se detectaron ${materiasExtraidas.length} materias.`;
       dashboard.classList.remove('hidden');
-      
       renderMateriasList();
       renderCalendar();
     }
 
+    // --- Renderizado y Eventos del Editor ---
     function renderMateriasList() {
       const container = document.getElementById('materiasList');
       container.innerHTML = '';
@@ -366,57 +389,90 @@
         
         let sesionesHtml = mat.sesiones.map((ses, sIdx) => `
           <tr>
-            <td><b>${ses.dia}</b></td>
-            <td style="white-space: nowrap;">${ses.horaTexto}</td>
-            <td><input type="text" value="${ses.edificio}" data-midx="${mIdx}" data-sidx="${sIdx}" class="input-edificio" placeholder="Edificio"></td>
+            <td>
+              <select data-midx="${mIdx}" data-sidx="${sIdx}" class="input-dia" style="min-width: 90px;">
+                <option value="LU" ${ses.dia === 'LU' ? 'selected' : ''}>Lunes</option>
+                <option value="MA" ${ses.dia === 'MA' ? 'selected' : ''}>Martes</option>
+                <option value="MI" ${ses.dia === 'MI' ? 'selected' : ''}>Miércoles</option>
+                <option value="JU" ${ses.dia === 'JU' ? 'selected' : ''}>Jueves</option>
+                <option value="VI" ${ses.dia === 'VI' ? 'selected' : ''}>Viernes</option>
+                <option value="SA" ${ses.dia === 'SA' ? 'selected' : ''}>Sábado</option>
+              </select>
+            </td>
+            <td>
+              <div class="time-flex">
+                <input type="time" value="${formatToTimeInput(ses.horaInicio)}" data-midx="${mIdx}" data-sidx="${sIdx}" class="input-hora-ini" title="Hora Inicio">
+                <span>-</span>
+                <input type="time" value="${formatToTimeInput(ses.horaFin)}" data-midx="${mIdx}" data-sidx="${sIdx}" class="input-hora-fin" title="Hora Fin">
+              </div>
+            </td>
+            <td><input type="text" value="${ses.edificio}" data-midx="${mIdx}" data-sidx="${sIdx}" class="input-edificio" placeholder="Edif."></td>
             <td><input type="text" value="${ses.aula}" data-midx="${mIdx}" data-sidx="${sIdx}" class="input-aula" placeholder="Salón"></td>
+            <td style="text-align: center;">
+              <button class="btn-delete-sesion" data-midx="${mIdx}" data-sidx="${sIdx}" style="background: transparent; border: none; color: #d32f2f; cursor: pointer; padding: 4px;" title="Borrar clase">❌</button>
+            </td>
           </tr>
         `).join('');
 
         matDiv.innerHTML = `
           <div class="materia-header">
             <input type="color" value="${mat.color}" data-midx="${mIdx}" class="color-picker" title="Cambiar color">
-            <input type="text" value="${mat.nombre}" data-midx="${mIdx}" class="materia-name-input" title="Modificar nombre de la asignatura">
-            <span class="codigo-badge">${mat.codigo}</span>
+            <input type="text" value="${mat.nombre}" data-midx="${mIdx}" class="materia-name-input" title="Nombre de la asignatura">
+            <input type="text" value="${mat.codigo}" data-midx="${mIdx}" class="codigo-input" title="Código de la asignatura">
+            <button class="btn-delete-materia" data-midx="${mIdx}" style="background: #ffebee; color: #c62828; border: 1px solid #ffcdd2; padding: 6px; border-radius: 4px; cursor: pointer;" title="Eliminar materia entera">🗑️</button>
           </div>
           <table class="sesiones-table">
             <thead>
-              <tr><th>Día</th><th>Hora</th><th>Edificio</th><th>Aula/Salón</th></tr>
+              <tr><th>Día</th><th>Horario</th><th>Edificio</th><th>Aula/Salón</th><th></th></tr>
             </thead>
             <tbody>${sesionesHtml}</tbody>
           </table>
+          <button class="btn-add-sesion" data-midx="${mIdx}" style="background: #e1f5fe; color: #0277bd; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: bold; margin-top: 4px;">+ Añadir horario a esta materia</button>
         `;
         container.appendChild(matDiv);
       });
 
+      // Listeners de actualización dinámica
       document.querySelectorAll('.color-picker').forEach(el => {
         el.addEventListener('input', (e) => {
-          const mIdx = e.target.dataset.midx;
-          materiasExtraidas[mIdx].color = e.target.value;
-          
-          if (checkColorUnico.checked) {
-            checkColorUnico.checked = false;
-            colorUnicoPicker.disabled = true;
+          materiasExtraidas[e.target.dataset.midx].color = e.target.value;
+          if (checkColorUnico.checked) { checkColorUnico.checked = false; colorUnicoPicker.disabled = true; }
+          renderCalendar();
+        });
+      });
+      document.querySelectorAll('.materia-name-input').forEach(el => el.addEventListener('input', (e) => { materiasExtraidas[e.target.dataset.midx].nombre = e.target.value; renderCalendar(); }));
+      document.querySelectorAll('.codigo-input').forEach(el => el.addEventListener('input', (e) => { materiasExtraidas[e.target.dataset.midx].codigo = e.target.value; }));
+      
+      document.querySelectorAll('.input-dia').forEach(el => el.addEventListener('change', (e) => { materiasExtraidas[e.target.dataset.midx].sesiones[e.target.dataset.sidx].dia = e.target.value; renderCalendar(); }));
+      document.querySelectorAll('.input-hora-ini').forEach(el => el.addEventListener('input', (e) => { materiasExtraidas[e.target.dataset.midx].sesiones[e.target.dataset.sidx].horaInicio = formatToISO(e.target.value); renderCalendar(); }));
+      document.querySelectorAll('.input-hora-fin').forEach(el => el.addEventListener('input', (e) => { materiasExtraidas[e.target.dataset.midx].sesiones[e.target.dataset.sidx].horaFin = formatToISO(e.target.value); renderCalendar(); }));
+      document.querySelectorAll('.input-edificio').forEach(el => el.addEventListener('input', (e) => { materiasExtraidas[e.target.dataset.midx].sesiones[e.target.dataset.sidx].edificio = e.target.value; renderCalendar(); }));
+      document.querySelectorAll('.input-aula').forEach(el => el.addEventListener('input', (e) => { materiasExtraidas[e.target.dataset.midx].sesiones[e.target.dataset.sidx].aula = e.target.value; renderCalendar(); }));
+
+      // Botones de acción (requieren re-dibujar la lista entera)
+      document.querySelectorAll('.btn-add-sesion').forEach(el => {
+        el.addEventListener('click', (e) => {
+          materiasExtraidas[e.target.dataset.midx].sesiones.push({ dia: 'LU', horaInicio: '070000', horaFin: '090000', edificio: 'UNAL', aula: 'Salón', grupo: '1', profesor: '' });
+          renderMateriasList();
+          renderCalendar();
+        });
+      });
+
+      document.querySelectorAll('.btn-delete-sesion').forEach(el => {
+        el.addEventListener('click', (e) => {
+          materiasExtraidas[e.target.dataset.midx].sesiones.splice(e.target.dataset.sidx, 1);
+          renderMateriasList();
+          renderCalendar();
+        });
+      });
+
+      document.querySelectorAll('.btn-delete-materia').forEach(el => {
+        el.addEventListener('click', (e) => {
+          if(confirm("¿Seguro que deseas borrar esta materia y todas sus clases de la semana?")) {
+            materiasExtraidas.splice(e.target.dataset.midx, 1);
+            renderMateriasList();
+            renderCalendar();
           }
-          renderCalendar();
-        });
-      });
-
-      document.querySelectorAll('.materia-name-input').forEach(el => {
-        el.addEventListener('input', (e) => {
-          const mIdx = e.target.dataset.midx;
-          materiasExtraidas[mIdx].nombre = e.target.value;
-          renderCalendar();
-        });
-      });
-
-      document.querySelectorAll('.input-edificio, .input-aula').forEach(el => {
-        el.addEventListener('input', (e) => {
-          const mIdx = e.target.dataset.midx;
-          const sIdx = e.target.dataset.sidx;
-          if (e.target.classList.contains('input-edificio')) materiasExtraidas[mIdx].sesiones[sIdx].edificio = e.target.value;
-          if (e.target.classList.contains('input-aula')) materiasExtraidas[mIdx].sesiones[sIdx].aula = e.target.value;
-          renderCalendar();
         });
       });
     }
@@ -426,30 +482,20 @@
       const dias = ['LU', 'MA', 'MI', 'JU', 'VI', 'SA'];
       const diasNombres = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
       
-      let html = `<div class="cal-wrapper">
-        <div class="cal-times">
-          <div style="height: 38px; border-bottom: 1px solid #d0d7de;"></div>`;
-      
-      for(let h = 6; h <= 21; h++) {
-        html += `<div class="cal-time-cell"><span>${h}:00</span></div>`;
-      }
+      let html = `<div class="cal-wrapper"><div class="cal-times"><div style="height: 38px; border-bottom: 1px solid #d0d7de;"></div>`;
+      for(let h = 6; h <= 21; h++) { html += `<div class="cal-time-cell"><span>${h}:00</span></div>`; }
       html += `<div class="cal-time-cell" style="height:0;"><span>22:00</span></div></div><div class="cal-grid">`;
 
       dias.forEach((dia, index) => {
-        html += `<div class="cal-day-col">
-          <div class="cal-day-header">${diasNombres[index]}</div>
-          <div class="cal-day-body">`;
-        
-        for(let h = 0; h <= 16; h++) {
-          html += `<div class="cal-grid-line" style="top: ${h * 40}px;"></div>`;
-        }
+        html += `<div class="cal-day-col"><div class="cal-day-header">${diasNombres[index]}</div><div class="cal-day-body">`;
+        for(let h = 0; h <= 16; h++) { html += `<div class="cal-grid-line" style="top: ${h * 40}px;"></div>`; }
 
         materiasExtraidas.forEach(mat => {
           mat.sesiones.filter(s => s.dia === dia).forEach(sesion => {
-            const startH = parseInt(sesion.horaInicio.substring(0,2));
-            const startM = parseInt(sesion.horaInicio.substring(2,4));
-            const endH = parseInt(sesion.horaFin.substring(0,2));
-            const endM = parseInt(sesion.horaFin.substring(2,4));
+            const startH = parseInt(sesion.horaInicio.substring(0,2)) || 7;
+            const startM = parseInt(sesion.horaInicio.substring(2,4)) || 0;
+            const endH = parseInt(sesion.horaFin.substring(0,2)) || 9;
+            const endM = parseInt(sesion.horaFin.substring(2,4)) || 0;
             
             const top = ((startH - 6) + (startM / 60)) * 40;
             const height = ((endH - startH) + ((endM - startM) / 60)) * 40;
@@ -460,10 +506,8 @@
             </div>`;
           });
         });
-
         html += `</div></div>`;
       });
-
       html += `</div></div>`;
       cal.innerHTML = html;
     }
@@ -487,9 +531,9 @@
       const notificacionVal = parseInt(document.getElementById('notificacion').value);
 
       if (!fechaInicioInput || !fechaFinInput) return alert("Por favor selecciona las fechas del semestre.");
+      if (materiasExtraidas.length === 0) return alert("No hay materias en el horario para exportar.");
 
       const fechaUntilISO = `${fechaFinInput.replace(/-/g, '')}T235959Z`;
-
       let icsContent = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//UNAL//Horario SIA Calendar//ES', 'CALSCALE:GREGORIAN'];
 
       materiasExtraidas.forEach(mat => {
@@ -502,7 +546,7 @@
             'BEGIN:VEVENT',
             `SUMMARY:${mat.nombre}`,
             `LOCATION:${ubicacionFinal}`,
-            `DESCRIPTION:Grupo: ${ses.grupo} - Profesor: ${ses.profesor}`,
+            `DESCRIPTION:Grupo: ${ses.grupo || ''} - Profesor: ${ses.profesor || ''}`,
             `COLOR:${mat.color}`,
             `DTSTART;TZID=America/Bogota:${fechaPrimeraClase}T${ses.horaInicio}`,
             `DTEND;TZID=America/Bogota:${fechaPrimeraClase}T${ses.horaFin}`,
@@ -510,21 +554,13 @@
           );
 
           if (notificacionVal > 0) {
-            icsContent.push(
-              'BEGIN:VALARM',
-              'ACTION:DISPLAY',
-              'DESCRIPTION:Recordatorio de clase',
-              `TRIGGER:-PT${notificacionVal}M`,
-              'END:VALARM'
-            );
+            icsContent.push('BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:Recordatorio de clase', `TRIGGER:-PT${notificacionVal}M`, 'END:VALARM');
           }
-
           icsContent.push('END:VEVENT');
         });
       });
 
       icsContent.push('END:VCALENDAR');
-
       const blob = new Blob([icsContent.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
