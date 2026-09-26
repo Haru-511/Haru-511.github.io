@@ -80,7 +80,7 @@
     .status-badge { background: #e0f2fe; color: #0369a1; padding: 0.4rem 0.8rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; }
 
     /* ========================================= */
-    /*   ESTILOS PARA EL TUTORIAL INTERACTIVO    */
+    /*   ESTILOS PARA EL TUTORIAL ONBOARDING     */
     /* ========================================= */
     .tutorial-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.7); z-index: 9999; backdrop-filter: blur(2px); transition: opacity 0.3s ease; pointer-events: auto; }
     .tutorial-highlight { position: relative !important; z-index: 10000 !important; background: #fff !important; box-shadow: 0 0 0 6px #fff, 0 10px 30px rgba(0,0,0,0.4) !important; border-radius: 8px !important; pointer-events: none !important; transition: all 0.3s ease; }
@@ -90,11 +90,25 @@
     .tutorial-actions { display: flex; justify-content: flex-end; align-items: center; gap: 1rem; }
     .btn-skip { background: transparent; color: #64748b; border: none; font-size: 0.85rem; cursor: pointer; text-decoration: underline; }
     .btn-skip:hover { color: #334155; }
+
+    /* ========================================= */
+    /*   ESTILOS PARA EL MODAL POST-DESCARGA     */
+    /* ========================================= */
+    .import-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.85); z-index: 100000; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.4s ease; backdrop-filter: blur(4px); }
+    .import-modal.active { opacity: 1; pointer-events: auto; }
+    .import-content { background: #fff; padding: 2.5rem; border-radius: 12px; max-width: 900px; width: 90%; max-height: 90vh; overflow-y: auto; position: relative; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+    .close-modal { position: absolute; top: 1rem; right: 1rem; background: #f1f5f9; border: none; font-size: 1.5rem; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; color: #64748b; transition: all 0.2s; }
+    .close-modal:hover { background: #e2e8f0; color: #0f172a; }
+    .tutorial-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-top: 2rem; }
+    .tutorial-step { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.5rem; text-align: center; }
+    .step-number { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; background: var(--primary); color: #fff; border-radius: 50%; font-weight: bold; margin-bottom: 1rem; font-size: 1.1rem; }
+    .img-placeholder { width: 100%; height: 120px; background: #e2e8f0; border-radius: 6px; margin: 1rem 0; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 0.85rem; font-style: italic; border: 2px dashed #94a3b8; }
+    .tutorial-img { width: 100%; border-radius: 6px; margin: 1rem 0; border: 1px solid #cfd9e0; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
   </style>
 </head>
 <body>
 
-  <!-- Overlay y Tooltip del Tutorial -->
+  <!-- Overlay y Tooltip del Tutorial de Onboarding -->
   <div id="tutorialOverlay" class="tutorial-overlay hidden"></div>
   <div id="tutorialTooltip" class="tutorial-tooltip hidden">
     <h4 id="tutorialTitle">Título</h4>
@@ -102,6 +116,47 @@
     <div class="tutorial-actions">
       <button id="btnTutorialSkip" class="btn-skip">Saltar tutorial</button>
       <button id="btnTutorialNext" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.9rem;">Entendido</button>
+    </div>
+  </div>
+
+  <!-- Modal Tutorial de Importación (Aparece tras descargar el ICS) -->
+  <div id="importTutorialModal" class="import-modal">
+    <div class="import-content">
+      <button class="close-modal" id="btnCloseImportModal" title="Cerrar tutorial">×</button>
+      <h2 style="color: var(--primary); margin-top: 0; text-align: center; font-size: 2rem;">🎉 ¡Tu horario está listo!</h2>
+      <p style="text-align: center; font-size: 1.1rem; color: #475569; margin-bottom: 2rem;">El archivo <b>.ics</b> se acaba de descargar. Sigue estos 4 pasos para subirlo a tu Google Calendar:</p>
+      
+      <div class="tutorial-grid">
+        <div class="tutorial-step">
+          <div class="step-number">1</div>
+          <h4 style="margin: 0; color: #334155;">Abre Calendar</h4>
+         <img src="imagenes/paso1.png" alt="Paso 1: Abrir Calendar" class="tutorial-img">
+          <p style="font-size: 0.9rem; color: #555;">Entra a <b>calendar.google.com</b> desde tu computador e inicia sesión.</p>
+        </div>
+        <div class="tutorial-step">
+          <div class="step-number">2</div>
+          <h4 style="margin: 0; color: #334155;">Ve a Configuración</h4>
+          <img src="imagenes/paso2.png" alt="Paso 2: Engranaje de configuración" class="tutorial-img">
+          <p style="font-size: 0.9rem; color: #555;">Haz clic en el ícono de engranaje ⚙️ (arriba a la derecha) y selecciona <b>Configuración</b>.</p>
+        </div>
+        <div class="tutorial-step">
+          <div class="step-number">3</div>
+          <h4 style="margin: 0; color: #334155;">Importar y exportar</h4>
+          <img src="imagenes/paso3.png" alt="Paso 3: Importar y exportar" class="tutorial-img">
+          <p style="font-size: 0.9rem; color: #555;">En el menú izquierdo, busca y haz clic en la opción <b>Importar y exportar</b>.</p>
+        </div>
+        <div class="tutorial-step">
+          <div class="step-number">4</div>
+          <h4 style="margin: 0; color: #334155;">Sube el archivo</h4>
+          <img src="imagenes/paso4.png" alt="Paso 4: Importar archivo" class="tutorial-img">
+          <p style="font-size: 0.9rem; color: #555;">Selecciona el archivo <b>.ics</b> descargado y haz clic en el botón <b>Importar</b>.</p>
+        </div>
+      </div>
+      
+      <div style="text-align: center; margin-top: 2.5rem;">
+        <button class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 2rem;" onclick="window.open('https://calendar.google.com/calendar/r/settings/export', '_blank')">Abrir Google Calendar ahora ↗</button>
+        <p style="font-size: 0.85rem; color: #94a3b8; margin-top: 1rem;">* El botón te llevará directamente a la pantalla del paso 3.</p>
+      </div>
     </div>
   </div>
 
@@ -204,15 +259,14 @@
     const DIAS_MAP = { 'LUNES': 'LU', 'MARTES': 'MA', 'MIÉRCOLES': 'MI', 'MIERCOLES': 'MI', 'JUEVES': 'JU', 'VIERNES': 'VI', 'SÁBADO': 'SA', 'SABADO': 'SA' };
 
     // ==========================================
-    // SISTEMA DE TUTORIAL ONBOARDING
+    // SISTEMA DE TUTORIAL ONBOARDING (Edición)
     // ==========================================
     let tutorialSteps = [];
     let currentStep = 0;
 
     function iniciarTutorial() {
-      if (tutorialHaSidoMostrado) return; // Solo mostrar una vez por recarga
+      if (tutorialHaSidoMostrado) return; 
 
-      // Definir dinámicamente los elementos objetivo (ya renderizados)
       tutorialSteps = [
         {
           element: document.querySelector('.materia-header'),
@@ -271,15 +325,12 @@
           document.getElementById('tutorialTitle').innerText = step.title;
           document.getElementById('tutorialText').innerText = step.text;
           
-          // Calcular posición de la caja de diálogo flotante
           let top = rect.bottom + window.scrollY + 20;
           let left = rect.left + window.scrollX + (rect.width / 2) - 160; 
           
-          // Evitar que se salga de la pantalla
           if (left + 350 > window.innerWidth) left = window.innerWidth - 350;
           if (left < 20) left = 20;
           
-          // Si el elemento está muy abajo en la pantalla, mostrar el tooltip arriba de él
           if (rect.bottom + 200 > window.innerHeight) {
             top = rect.top + window.scrollY - tooltip.offsetHeight - 20;
           }
@@ -288,7 +339,7 @@
           tooltip.style.left = left + 'px';
           
           document.getElementById('btnTutorialNext').innerText = (currentStep === tutorialSteps.length - 1) ? '¡Empezar a editar!' : 'Entendido';
-        }, 300); // Pequeño retraso para dejar que haga el scroll
+        }, 300); 
       } else {
         currentStep++;
         mostrarPasoTutorial();
@@ -304,6 +355,12 @@
     document.getElementById('btnTutorialNext').addEventListener('click', () => { currentStep++; mostrarPasoTutorial(); });
     document.getElementById('btnTutorialSkip').addEventListener('click', finalizarTutorial);
 
+    // ==========================================
+    // CERRAR MODAL DE IMPORTACIÓN POST-DESCARGA
+    // ==========================================
+    document.getElementById('btnCloseImportModal').addEventListener('click', () => {
+      document.getElementById('importTutorialModal').classList.remove('active');
+    });
 
     // ==========================================
     // LOGICA DE LA APLICACIÓN
@@ -316,7 +373,6 @@
         mainWorkspace.classList.add('active');
         statusBadge.innerHTML = `✓ ${mensaje}`;
         
-        // Iniciar el tutorial una vez la pantalla es visible
         setTimeout(() => iniciarTutorial(), 300);
       }, 400);
     }
@@ -638,6 +694,11 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url; a.download = 'horario_unal.ics'; a.click();
+      
+      // MOSTRAR TUTORIAL POST-DESCARGA DESPUÉS DE 1 SEGUNDO
+      setTimeout(() => {
+        document.getElementById('importTutorialModal').classList.add('active');
+      }, 1000);
     });
   </script>
 </body>
